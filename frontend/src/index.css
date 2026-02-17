@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+body {
+    font-family: sans-serif;
+    -webkit-font-smoothing: auto;
+    -moz-font-smoothing: auto;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-smooth: always;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    /* font-smoothing: auto; */
+}
+
+h1 {
+    font-size: 1.5rem;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
