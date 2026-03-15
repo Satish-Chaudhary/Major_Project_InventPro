@@ -8,9 +8,14 @@ import NotificationBox from './NotificationBox.jsx';
 import { Link } from 'react-router-dom'
 import SideNavHeader from './SideNavHeader.jsx';
 
-const Header = ({ activeTab, notifications, onAddClick }) => {
+import { useApp } from '../../context/AppContext';
+
+const Header = () => {
+    const {
+        notifications,
+        setShowAddModal
+    } = useApp();
     const [showNotifications, setShowNotifications] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
 
     return (
         <header className="bg-[#0a0a0a]/80 backdrop-blur-md border-b border-slate-800 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
@@ -23,12 +28,12 @@ const Header = ({ activeTab, notifications, onAddClick }) => {
                         <NotificationBox notifications={notifications} showNotifications={showNotifications} />
                     </AnimatePresence>
                 </div>
-                <button
-                    onClick={onAddClick}
+                {/* <button
+                    onClick={() => setShowAddModal(true)}
                     className="flex items-center gap-2 bg-linear-to-r from-purple-600 to-cyan-600 text-white px-4 py-2 rounded-lg hover:brightness-110 transition-all font-medium text-sm shadow-lg shadow-purple-500/20 active:scale-95">
                     <Plus className="w-4 h-4" />
                     Add Product
-                </button>
+                </button> */}
             </div>
         </header>
     );

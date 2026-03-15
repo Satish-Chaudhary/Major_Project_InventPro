@@ -1,8 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Package, X, Upload, Info, Check } from 'lucide-react';
 
-const AddProduct = ({ isOpen, onClose, onAdd }) => {
+import { useApp } from '../context/AppContext';
+
+const AddProduct = ({ isOpen, editProduct }) => {
+    const { setShowAddModal, addProduct, updateProduct } = useApp();
+    const onClose = () => setShowAddModal(false);
+
+    // Internal state for form remains here as it's local to the form
     const [formData, setFormData] = useState({
         name: '',
         sku: '',
@@ -14,10 +20,62 @@ const AddProduct = ({ isOpen, onClose, onAdd }) => {
         taxRate: '20',
         initialQuantity: '',
         lowStockThreshold: '10',
-        status: true
+        status: 'in stock'
     });
 
+    useEffect(() => {
+        if (editProduct) {
+            setFormData({
+                name: editProduct.name || '',
+                sku: editProduct.sku || '',
+                category: editProduct.category || 'Electronics',
+                brand: editProduct.brand || '',
+                description: editProduct.description || '',
+                basePrice: editProduct.price || '',
+                costPrice: editProduct.costPrice || '',
+                taxRate: editProduct.taxRate || '20',
+                initialQuantity: editProduct.stock || '',
+                lowStockThreshold: editProduct.minStock || '10',
+                status: editProduct.status || 'in stock'
+            });
+        } else {
+            setFormData({
+                name: '',
+                sku: '',
+                category: 'Electronics',
+                brand: '',
+                description: '',
+                basePrice: '',
+                costPrice: '',
+                taxRate: '20',
+                initialQuantity: '',
+                lowStockThreshold: '10',
+                status: 'in stock'
+            });
+        }
+    }, [editProduct, isOpen]);
+
     if (!isOpen) return null;
+
+    const handleSave = () => {
+        const productData = {
+            id: editProduct ? editProduct.id : Date.now(),
+            name: formData.name || 'New Product',
+            sku: formData.sku || 'SKU-' + Math.floor(Math.random() * 1000),
+            category: formData.category,
+            stock: parseInt(formData.initialQuantity) || 0,
+            minStock: parseInt(formData.lowStockThreshold) || 10,
+            price: parseFloat(formData.basePrice) || 0,
+            status: formData.status
+        };
+
+        if (editProduct) {
+            updateProduct(productData);
+        } else {
+            addProduct(productData);
+        }
+        onClose();
+    };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -38,8 +96,9 @@ const AddProduct = ({ isOpen, onClose, onAdd }) => {
                 {/* Header */}
                 <div className="px-8 py-6 border-b border-slate-800 flex items-center justify-between bg-linear-to-r from-purple-500/5 to-cyan-500/5">
                     <div>
-                        <h2 className="text-2xl font-bold text-white tracking-tight">Add New Product</h2>
-                        {/* <p className="text-slate-400 text-sm mt-1">Products &gt; Add New Product</p> */}
+                        <h2 className="text-2xl font-bold text-white tracking-tight">
+                            {editProduct ? 'Edit Product' : 'Add New Product'}
+                        </h2>
                     </div>
                     <div className="flex items-center gap-3">
                         <button
@@ -49,10 +108,11 @@ const AddProduct = ({ isOpen, onClose, onAdd }) => {
                             Cancel
                         </button>
                         <button
+                            onClick={handleSave}
                             className="px-6 py-2.5 rounded-lg bg-linear-to-r from-purple-600 to-cyan-600 text-white font-bold hover:brightness-110 shadow-lg shadow-purple-500/20 flex items-center gap-2 transition-all text-sm"
                         >
                             <Check className="w-4 h-4" />
-                            Save Product
+                            {editProduct ? 'Update Product' : 'Save Product'}
                         </button>
                     </div>
                 </div>
@@ -73,6 +133,8 @@ const AddProduct = ({ isOpen, onClose, onAdd }) => {
                                         <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Product Name</label>
                                         <input
                                             type="text"
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                             placeholder="e.g. Wireless Noise-Cancelling Headphones"
                                             className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-all"
                                         />
@@ -81,23 +143,32 @@ const AddProduct = ({ isOpen, onClose, onAdd }) => {
                                         <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Description</label>
                                         <textarea
                                             rows="4"
+                                            value={formData.description}
+                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                             placeholder="Describe the product features and specifications..."
                                             className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-all resize-none"
                                         />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="col-span-2">
                                             <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Category</label>
-                                            <select className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-all appearance-none cursor-pointer">
+                                            <select
+                                                value={formData.category}
+                                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-all appearance-none cursor-pointer"
+                                            >
                                                 <option>Electronics</option>
                                                 <option>Accessories</option>
                                                 <option>Office Supplies</option>
+                                                <option>Furniture</option>
                                             </select>
                                         </div>
                                         <div>
                                             <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Brand</label>
                                             <input
                                                 type="text"
+                                                value={formData.brand}
+                                                onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
                                                 placeholder="e.g. Sony, Apple"
                                                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-all"
                                             />
@@ -115,19 +186,37 @@ const AddProduct = ({ isOpen, onClose, onAdd }) => {
                                 <div className="grid grid-cols-2 gap-6">
                                     <div>
                                         <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">SKU (Stock Keeping Unit)</label>
-                                        <input type="text" placeholder="e.g. WNH-001" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" />
+                                        <input
+                                            type="text"
+                                            value={formData.sku}
+                                            onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                                            placeholder="e.g. WNH-001"
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500"
+                                        />
                                     </div>
                                     <div>
                                         <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Barcode / EAN</label>
                                         <input type="text" placeholder="0000 0000 0000" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" />
                                     </div>
                                     <div>
-                                        <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Initial Quantity</label>
-                                        <input type="number" placeholder="0" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" />
+                                        <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Quantity</label>
+                                        <input
+                                            type="number"
+                                            value={formData.initialQuantity}
+                                            onChange={(e) => setFormData({ ...formData, initialQuantity: e.target.value })}
+                                            placeholder="0"
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500"
+                                        />
                                     </div>
                                     <div>
                                         <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Low Stock Threshold</label>
-                                        <input type="number" placeholder="10" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" />
+                                        <input
+                                            type="number"
+                                            value={formData.lowStockThreshold}
+                                            onChange={(e) => setFormData({ ...formData, lowStockThreshold: e.target.value })}
+                                            placeholder="10"
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500"
+                                        />
                                     </div>
                                 </div>
                             </section>
@@ -151,11 +240,25 @@ const AddProduct = ({ isOpen, onClose, onAdd }) => {
                                 <div className="space-y-4">
                                     <div>
                                         <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Base Price ($)</label>
-                                        <input type="number" step="0.01" placeholder="0.00" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 tabular-nums" />
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            value={formData.basePrice}
+                                            onChange={(e) => setFormData({ ...formData, basePrice: e.target.value })}
+                                            placeholder="0.00"
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 tabular-nums"
+                                        />
                                     </div>
                                     <div>
                                         <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Cost Price ($)</label>
-                                        <input type="number" step="0.01" placeholder="0.00" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 tabular-nums" />
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            value={formData.costPrice}
+                                            onChange={(e) => setFormData({ ...formData, costPrice: e.target.value })}
+                                            placeholder="0.00"
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 tabular-nums"
+                                        />
                                         <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1"><Info className="w-3 h-3" /> Customers won't see this</p>
                                     </div>
                                     <div>
@@ -166,14 +269,36 @@ const AddProduct = ({ isOpen, onClose, onAdd }) => {
                             </section>
 
                             <section className="bg-slate-900/30 border border-slate-800/50 rounded-2xl p-6">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h3 className="text-md font-bold text-white tracking-tight">Status</h3>
-                                        <p className="text-[11px] text-slate-500">Product will be visible</p>
-                                    </div>
-                                    <button className="w-12 h-6 bg-purple-600 rounded-full relative shadow-inner">
-                                        <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-md" />
-                                    </button>
+                                <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wider">Product Status</h3>
+                                <div className="space-y-3">
+                                    {[
+                                        { id: 'in stock', label: 'In Stock', color: 'bg-emerald-500' },
+                                        { id: 'low stock', label: 'Low Stock', color: 'bg-amber-500' },
+                                        { id: 'out of stock', label: 'Out of Stock', color: 'bg-rose-500' }
+                                    ].map((option) => (
+                                        <label
+                                            key={option.id}
+                                            className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${formData.status === option.id
+                                                ? 'bg-purple-500/10 border-purple-500/50'
+                                                : 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-2 h-2 rounded-full ${option.color}`} />
+                                                <span className={`text-xs font-semibold ${formData.status === option.id ? 'text-white' : 'text-slate-400'}`}>
+                                                    {option.label}
+                                                </span>
+                                            </div>
+                                            <input
+                                                type="radio"
+                                                name="status"
+                                                value={option.id}
+                                                checked={formData.status === option.id}
+                                                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                                className="w-4 h-4 accent-purple-500 cursor-pointer"
+                                            />
+                                        </label>
+                                    ))}
                                 </div>
                             </section>
                         </div>

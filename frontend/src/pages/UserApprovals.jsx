@@ -1,48 +1,70 @@
-import React, { useState } from 'react';
-import { UserCheck, UserX, Clock, Search, ShieldCheck, Mail, Building2, Calendar, MessageSquare, CheckCircle2, XCircle, ChevronRight, Info } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { UserCheck, UserX, Clock, Search, ShieldCheck, Mail, Calendar, CheckCircle2, XCircle, ChevronRight, Info, User as UserIcon } from 'lucide-react';
 import { clsx } from 'clsx';
 import { toast } from 'react-hot-toast';
+import axios from 'axios';
+import { serverUrl } from '../App';
+import { ClipLoader } from 'react-spinners';
 
 const UserApprovals = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilter, setActiveFilter] = useState('pending'); // pending, approved, rejected
     const [expandedUser, setExpandedUser] = useState(null);
+    const [allUsers, setAllUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    // Mock data for users
-    const [allUsers, setAllUsers] = useState([
-        { id: 1, fullName: 'John Doe', email: 'john@example.com', department: 'Inventory', requestedAt: 'Feb 07, 10:30 AM', status: 'pending', reason: 'I need access to manage the upcoming shipment of electronics and update stock levels.' },
-        { id: 2, fullName: 'Sarah Miller', email: 'sarah.m@company.com', department: 'Wholesale', requestedAt: 'Feb 07, 11:45 AM', status: 'pending', reason: 'Assigned to the wholesale distribution team. Need access to process bulk orders.' },
-        { id: 3, fullName: 'Michael Chen', email: 'm.chen@logistics.net', department: 'Logistics', requestedAt: 'Feb 07, 02:15 PM', status: 'approved', reason: 'Logistics coordinator requiring inventory visibility for route planning.' },
-        { id: 4, fullName: 'Emma Wilson', email: 'emma@sales.com', department: 'Sales', requestedAt: 'Feb 08, 09:00 AM', status: 'pending', reason: 'Viewing stock availability for client inquiries.' },
-        { id: 5, fullName: 'Robert Ross', email: 'r.ross@tech.org', department: 'IT Support', requestedAt: 'Feb 08, 10:30 AM', status: 'rejected', reason: 'System maintenance and troubleshooting for the backend servers.' },
-    ]);
-
-    const handleApprove = (id) => {
-        setAllUsers(prev => prev.map(user =>
-            user.id === id ? { ...user, status: 'approved' } : user
-        ));
-        toast.success('User approved successfully!');
+    // Fetch pending requests from backend
+    const fetchRequests = async () => {
+        setLoading(true);
+        try {
+            const response = await axios.get(`${serverUrl}/api/auth/pending-requests`, { withCredentials: true });
+            if (response.data.success) {
+                setAllUsers(response.data.requests);
+            }
+        } catch (error) {
+            console.error('Error fetching requests:', error);
+            toast.error('Failed to fetch user requests');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleReject = (id) => {
-        setAllUsers(prev => prev.map(user =>
-            user.id === id ? { ...user, status: 'rejected' } : user
-        ));
-        toast.error('User request rejected');
+    useEffect(() => {
+        fetchRequests();
+    }, []);
+
+    const handleApprove = async (id) => {
+        try {
+            const response = await axios.post(`${serverUrl}/api/auth/approve/${id}`, {}, { withCredentials: true });
+            if (response.data.success) {
+                toast.success(response.data.message);
+                fetchRequests();
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Approval failed');
+        }
     };
 
-    const handleReset = (id) => {
-        setAllUsers(prev => prev.map(user =>
-            user.id === id ? { ...user, status: 'pending' } : user
-        ));
-        toast.info('Status reset to pending');
+    const handleReject = async (id) => {
+        try {
+            const response = await axios.post(`${serverUrl}/api/auth/reject/${id}`, {}, { withCredentials: true });
+            if (response.data.success) {
+                toast.error(response.data.message);
+                fetchRequests();
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Rejection failed');
+        }
+    };
+
+    const handleReset = async (id) => {
+        toast.info('Status reset functionality pending backend route');
     };
 
     const filteredUsers = allUsers.filter(user => {
         const matchesFilter = user.status === activeFilter;
         const matchesSearch = user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            user.department.toLowerCase().includes(searchQuery.toLowerCase());
+            user.email.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesFilter && matchesSearch;
     });
 
@@ -111,13 +133,18 @@ const UserApprovals = () => {
 
             {/* Compact List View */}
             <div className="space-y-3">
-                {filteredUsers.length > 0 ? (
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center py-20 bg-[#0a0a0a] border border-slate-800 rounded-3xl">
+                        <ClipLoader color='#8b5cf6' size={40} />
+                        <p className="mt-4 text-slate-500 font-bold uppercase tracking-widest text-xs">Synchronizing Records...</p>
+                    </div>
+                ) : filteredUsers.length > 0 ? (
                     filteredUsers.map((user) => (
                         <div
-                            key={user.id}
+                            key={user._id}
                             className={clsx(
                                 "bg-[#0a0a0a] border border-slate-800/80 rounded-2xl transition-all duration-300 overflow-hidden group hover:border-slate-700 shadow-xl shadow-black/20",
-                                expandedUser === user.id ? "ring-1 ring-purple-500/30" : ""
+                                expandedUser === user._id ? "ring-1 ring-purple-500/30" : ""
                             )}
                         >
                             {/* Main Row */}
@@ -130,30 +157,22 @@ const UserApprovals = () => {
                                     <div className="min-w-0">
                                         <h3 className="text-sm font-bold text-white truncate">{user.fullName}</h3>
                                         <div className="flex items-center gap-2 text-slate-500 text-[11px] font-bold uppercase tracking-wider mt-0.5">
-                                            <Building2 className="w-3 h-3" />
-                                            {user.department}
+                                            <Mail className="w-3 h-3" />
+                                            {user.email}
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Contact Column */}
-                                <div className="hidden lg:flex items-center gap-2 w-1/4">
-                                    <Mail className="w-3.5 h-3.5 text-slate-600" />
-                                    <span className="text-xs text-slate-400 truncate">{user.email}</span>
-                                </div>
-
                                 {/* Date Column */}
-                                <div className="hidden md:flex items-center gap-2 w-1/6">
+                                <div className="hidden lg:flex items-center gap-2 w-1/4">
                                     <Calendar className="w-3.5 h-3.5 text-slate-600" />
-                                    <span className="text-xs text-slate-400 font-medium">{user.requestedAt}</span>
+                                    <span className="text-xs text-slate-400 font-medium">{new Date(user.createdAt).toLocaleDateString()}</span>
                                 </div>
 
-                                {/* Summary Box (Compact reason teaser) */}
-                                <div className="flex-1 min-w-[150px] flex items-center gap-2 bg-slate-900/40 p-2 rounded-lg border border-slate-800/50">
-                                    <MessageSquare className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-                                    <p className="text-[11px] text-slate-500 truncate italic leading-none">
-                                        "{user.reason}"
-                                    </p>
+                                {/* Role Column */}
+                                <div className="hidden md:flex items-center gap-2 w-1/4">
+                                    <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                                    <span className="text-xs text-slate-300 font-bold uppercase tracking-widest">{user.role}</span>
                                 </div>
 
                                 {/* Actions Column */}
@@ -161,14 +180,14 @@ const UserApprovals = () => {
                                     {user.status === 'pending' ? (
                                         <div className="flex gap-1.5">
                                             <button
-                                                onClick={() => handleApprove(user.id)}
+                                                onClick={() => handleApprove(user._id)}
                                                 className="p-2 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-lg border border-emerald-500/20 transition-all active:scale-90 shadow-lg shadow-emerald-900/10"
                                                 title="Approve User"
                                             >
                                                 <UserCheck className="w-4 h-4" />
                                             </button>
                                             <button
-                                                onClick={() => handleReject(user.id)}
+                                                onClick={() => handleReject(user._id)}
                                                 className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg border border-red-500/20 transition-all active:scale-90 shadow-lg shadow-red-900/10"
                                                 title="Reject User"
                                             >
@@ -177,7 +196,7 @@ const UserApprovals = () => {
                                         </div>
                                     ) : (
                                         <button
-                                            onClick={() => handleReset(user.id)}
+                                            onClick={() => handleReset(user._id)}
                                             className="p-2 bg-slate-800 text-slate-400 hover:text-white rounded-lg border border-slate-700 transition-all"
                                             title="Reset to Pending"
                                         >
@@ -186,10 +205,10 @@ const UserApprovals = () => {
                                     )}
                                     <div className="w-px h-6 bg-slate-800 mx-1" />
                                     <button
-                                        onClick={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
+                                        onClick={() => setExpandedUser(expandedUser === user._id ? null : user._id)}
                                         className={clsx(
                                             "p-2 hover:bg-slate-800 rounded-lg transition-all",
-                                            expandedUser === user.id ? "rotate-90 bg-slate-800 text-purple-400" : "text-slate-500"
+                                            expandedUser === user._id ? "rotate-90 bg-slate-800 text-purple-400" : "text-slate-500"
                                         )}
                                     >
                                         <ChevronRight className="w-4 h-4" />
@@ -198,19 +217,25 @@ const UserApprovals = () => {
                             </div>
 
                             {/* Expanded Details Section */}
-                            {expandedUser === user.id && (
+                            {expandedUser === user._id && (
                                 <div className="px-5 pb-5 animate-in slide-in-from-top-2 duration-300">
                                     <div className="pt-2 border-t border-slate-800 flex flex-col md:flex-row gap-6">
-                                        {/* Left Side: Reason focus */}
-                                        <div className="flex-1">
+                                        {/* Contact Info */}
+                                        <div className="flex-1 space-y-4">
                                             <h4 className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
                                                 <Info className="w-3 h-3" />
-                                                Detailed Justification
+                                                Staff Details
                                             </h4>
-                                            <div className="bg-[#050505] p-4 rounded-xl border border-slate-800 shadow-inner relative">
-                                                <p className="text-slate-300 text-sm leading-relaxed italic">
-                                                    "{user.reason}"
-                                                </p>
+                                            <div className="grid grid-cols-1 gap-4">
+                                                <div className="flex items-center gap-3 bg-[#050505] p-3 rounded-xl border border-slate-800 shadow-inner">
+                                                    <div className="p-2 bg-purple-500/10 rounded-lg">
+                                                        <Mail className="w-4 h-4 text-purple-400" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] text-slate-600 uppercase font-black">Email Address</p>
+                                                        <p className="text-xs text-white break-all">{user.email}</p>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                         {/* Right Side: Quick Metadata */}
@@ -219,15 +244,16 @@ const UserApprovals = () => {
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div className="p-3 bg-slate-900/40 rounded-xl border border-slate-800">
                                                     <p className="text-[9px] text-slate-500 uppercase font-bold">Request ID</p>
-                                                    <p className="text-xs text-white font-mono mt-1">#IP-00{user.id}</p>
+                                                    <p className="text-xs text-white font-mono mt-1">#IP-{user._id.slice(-4)}</p>
                                                 </div>
                                                 <div className="p-3 bg-slate-900/40 rounded-xl border border-slate-800">
-                                                    <p className="text-[9px] text-slate-500 uppercase font-bold">Priority</p>
-                                                    <p className="text-xs text-amber-500 font-bold mt-1">Medium</p>
+                                                    <p className="text-[9px] text-slate-500 uppercase font-bold">Date</p>
+                                                    <p className="text-xs text-white font-bold mt-1">{new Date(user.createdAt).toLocaleDateString()}</p>
                                                 </div>
                                             </div>
-                                            <button className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg border border-slate-700 transition-all uppercase tracking-widest">
-                                                View User Profile
+                                            <button className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg border border-slate-700 transition-all uppercase tracking-widest flex items-center justify-center gap-2">
+                                                <UserIcon className="w-3.5 h-3.5" />
+                                                Full Profile
                                             </button>
                                         </div>
                                     </div>
@@ -235,8 +261,8 @@ const UserApprovals = () => {
                             )}
                         </div>
                     )))
-                    : (
-                        <div className="bg-[#0a0a0a] border-2 border-dashed border-slate-800/50 rounded-3xl p-16 text-center shadow-2xl">
+                : (
+                    <div className="bg-[#0a0a0a] border-2 border-dashed border-slate-800/50 rounded-3xl p-16 text-center shadow-2xl">
                             <div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-800 overflow-hidden relative">
                                 <div className="absolute inset-0 bg-linear-to-b from-purple-500/20 to-transparent" />
                                 <ShieldCheck className="w-7 h-7 text-slate-500" />

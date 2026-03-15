@@ -3,51 +3,17 @@ import { motion } from 'framer-motion';
 import {
     Users, UserPlus, Mail, Phone, Edit3, Trash2,
     Search, Shield, CheckCircle2, MoreVertical,
-    MapPin, Clock, ArrowUpRight
+    MapPin, Clock, ArrowUpRight, Download, ChevronRight
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useNavigate } from 'react-router-dom';
+
+import { useApp } from '../context/AppContext';
 
 const Suppliers = () => {
+    const navigate = useNavigate();
+    const { suppliers } = useApp();
     const [activeSuppliersTab, setActiveSuppliersTab] = useState('all');
-
-    const suppliers = [
-        {
-            id: 1,
-            company: 'TechSupplies Inc.',
-            code: 'SUP-001',
-            contact: 'Sarah Jenkins',
-            email: 'sarah@techsupplies.com',
-            phone: '+1 (555) 123-4567',
-            categories: ['Electronics', 'Hardware'],
-            status: 'Active',
-            reliability: 98,
-            location: 'San Jose, CA'
-        },
-        {
-            id: 2,
-            company: 'Office Depot Suppliers',
-            code: 'SUP-002',
-            contact: 'Michael Chen',
-            email: 'm.chen@officedepot.com',
-            phone: '+1 (555) 987-6543',
-            categories: ['Office', 'Stationery'],
-            status: 'Active',
-            reliability: 92,
-            location: 'Chicago, IL'
-        },
-        {
-            id: 3,
-            company: 'Global Retailers',
-            code: 'SUP-003',
-            contact: 'Amanda Lewis',
-            email: 'support@global.com',
-            phone: '+44 20 7123 4567',
-            categories: ['Furniture', 'Decor'],
-            status: 'Inactive',
-            reliability: 75,
-            location: 'London, UK'
-        },
-    ];
 
     const filteredSuppliers = activeSuppliersTab === 'all'
         ? suppliers
@@ -61,11 +27,6 @@ const Suppliers = () => {
         >
             <div className="flex items-center justify-between">
                 <div>
-                    <div className="flex items-center gap-2 text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">
-                        <span>Home</span>
-                        <ChevronRight className="w-3 h-3" />
-                        <span className="text-slate-300">Suppliers</span>
-                    </div>
                     <h2 className="text-3xl font-bold text-white tracking-tight">Suppliers</h2>
                 </div>
                 <div className="flex gap-3">
@@ -73,7 +34,10 @@ const Suppliers = () => {
                         <Download className="w-4 h-4" />
                         Export CSV
                     </button>
-                    <button className="flex items-center gap-2 bg-linear-to-r from-purple-600 to-cyan-600 text-white px-5 py-2.5 rounded-xl hover:brightness-110 transition-all font-bold text-sm shadow-lg shadow-purple-500/20">
+                    <button
+                        onClick={() => navigate('/add-supplier')}
+                        className="flex items-center gap-2 bg-linear-to-r from-purple-600 to-cyan-600 text-white px-5 py-2.5 rounded-xl hover:brightness-110 transition-all font-bold text-sm shadow-lg shadow-purple-500/20"
+                    >
                         <UserPlus className="w-4 h-4" />
                         Add Supplier
                     </button>
@@ -198,17 +162,5 @@ const Suppliers = () => {
         </motion.div>
     );
 };
-
-const ChevronRight = ({ className }) => (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-    </svg>
-);
-
-const Download = ({ className }) => (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-    </svg>
-);
 
 export default Suppliers;

@@ -6,52 +6,15 @@ import {
     FileText, Calendar, ChevronRight
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useNavigate } from 'react-router-dom';
+
+import { useApp } from '../context/AppContext';
 
 const Orders = () => {
+    const navigate = useNavigate();
+    const { orders } = useApp();
     const [activeOrderTab, setActiveOrderTab] = useState('all');
-
-    const orders = [
-        {
-            id: '#ORD-2023-884',
-            date: 'Oct 24, 2023',
-            time: '10:45 AM',
-            type: 'inward',
-            entity: 'TechSupplies Inc.',
-            items: '120 units',
-            value: '$4,500.00',
-            status: 'completed'
-        },
-        {
-            id: '#ORD-2023-883',
-            date: 'Oct 24, 2023',
-            time: '09:15 AM',
-            type: 'outward',
-            entity: 'Apex Solutions',
-            items: '45 units',
-            value: '$1,250.00',
-            status: 'processing'
-        },
-        {
-            id: '#ORD-2023-882',
-            date: 'Oct 23, 2023',
-            time: '04:30 PM',
-            type: 'outward',
-            entity: 'Global Retailers',
-            items: '200 units',
-            value: '$8,900.00',
-            status: 'pending'
-        },
-        {
-            id: '#ORD-2023-881',
-            date: 'Oct 22, 2023',
-            time: '11:20 AM',
-            type: 'inward',
-            entity: 'Office Depot',
-            items: '50 units',
-            value: '$2,100.00',
-            status: 'completed'
-        },
-    ];
+    /* ... earlier ... */
 
     const getStatusStyle = (status) => {
         switch (status) {
@@ -70,11 +33,6 @@ const Orders = () => {
         >
             <div className="flex items-center justify-between">
                 <div>
-                    <div className="flex items-center gap-2 text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-1">
-                        <span>Home</span>
-                        <ChevronRight className="w-3 h-3" />
-                        <span className="text-slate-300">Orders</span>
-                    </div>
                     <h2 className="text-3xl font-bold text-white tracking-tight">Orders & Stock Movement</h2>
                 </div>
                 <div className="flex gap-3">
@@ -82,7 +40,10 @@ const Orders = () => {
                         <Download className="w-4 h-4" />
                         Export
                     </button>
-                    <button className="flex items-center gap-2 bg-linear-to-r from-purple-600 to-cyan-600 text-white px-5 py-2.5 rounded-xl hover:brightness-110 transition-all font-bold text-sm shadow-lg shadow-purple-500/20 active:scale-95">
+                    <button
+                        onClick={() => navigate('/add-order')}
+                        className="flex items-center gap-2 bg-linear-to-r from-purple-600 to-cyan-600 text-white px-5 py-2.5 rounded-xl hover:brightness-110 transition-all font-bold text-sm shadow-lg shadow-purple-500/20 active:scale-95"
+                    >
                         <Plus className="w-4 h-4" />
                         Create Order
                     </button>

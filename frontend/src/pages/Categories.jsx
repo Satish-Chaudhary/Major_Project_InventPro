@@ -2,15 +2,24 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Package, Plus, Search, FolderPlus, MoreVertical, Edit2, Trash2 } from 'lucide-react';
 
-const Categories = ({ onAddClick }) => {
-    const categories = [
-        { id: 1, name: 'Electronics', count: 450, stockValue: '$124,500', trend: '+12%', color: 'from-purple-500 to-indigo-500' },
-        { id: 2, name: 'Furniture', count: 120, stockValue: '$86,200', trend: '-5%', color: 'from-cyan-500 to-blue-500' },
-        { id: 3, name: 'Accessories', count: 890, stockValue: '$42,300', trend: '+18%', color: 'from-emerald-500 to-teal-500' },
-        { id: 4, name: 'Office Supplies', count: 340, stockValue: '$31,900', trend: '+2%', color: 'from-amber-500 to-orange-500' },
-        { id: 5, name: 'Laptops', count: 85, stockValue: '$210,000', trend: '+24%', color: 'from-pink-500 to-rose-500' },
-        { id: 6, name: 'Smartphones', count: 160, stockValue: '$145,000', trend: '+15%', color: 'from-violet-500 to-purple-500' },
-    ];
+import { useNavigate } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
+
+const Categories = () => {
+    const navigate = useNavigate();
+    const { categories, deleteCategory } = useApp();
+
+    const onAddClick = () => navigate('/add-category');
+
+    const handleDelete = (id, name) => {
+        if (window.confirm(`Are you sure you want to delete the category "${name}"?`)) {
+            deleteCategory(id);
+        }
+    };
+
+    const handleEdit = (category) => {
+        navigate('/add-category', { state: { editCategory: category } });
+    };
 
     return (
         <motion.div
@@ -52,16 +61,16 @@ const Categories = ({ onAddClick }) => {
                             </button>
                         </div>
 
-                        <h3 className="text-xl font-bold text-white">{cat.name}</h3>
+                        <h3 className="text-xl font-bold text-white tracking-tight">{cat.name}</h3>
                         <div className="flex items-center gap-4 mt-4">
                             <div>
-                                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Products</p>
-                                <p className="text-white font-bold">{cat.count}</p>
+                                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest leading-none">Products</p>
+                                <p className="text-white font-bold text-lg">{cat.count}</p>
                             </div>
                             <div className="w-px h-8 bg-slate-800" />
                             <div>
-                                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Stock Value</p>
-                                <p className="text-white font-bold">{cat.stockValue}</p>
+                                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest leading-none">Stock Value</p>
+                                <p className="text-white font-bold text-lg">{cat.stockValue}</p>
                             </div>
                         </div>
 
@@ -70,8 +79,26 @@ const Categories = ({ onAddClick }) => {
                                 {cat.trend} this month
                             </span>
                             <div className="flex gap-2">
-                                <button className="p-1.5 text-slate-500 hover:text-cyan-400 transition-colors"><Edit2 className="w-4 h-4" /></button>
-                                <button className="p-1.5 text-slate-500 hover:text-red-400 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEdit(cat);
+                                    }}
+                                    className="p-2 text-slate-400 hover:text-cyan-400 hover:bg-cyan-400/10 rounded-lg transition-all"
+                                    title="Edit Category"
+                                >
+                                    <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDelete(cat.id, cat.name);
+                                    }}
+                                    className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                                    title="Delete Category"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
                             </div>
                         </div>
                     </motion.div>

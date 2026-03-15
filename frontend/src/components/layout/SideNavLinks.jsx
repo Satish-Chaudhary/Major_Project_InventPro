@@ -1,7 +1,10 @@
 import { clsx } from 'clsx';
 import { Link } from 'react-router-dom'
 
-const SideNavLinks = ({ id, Icon, label, activeTab, setActiveTab, onLogout }) => {
+import { useApp } from '../../context/AppContext';
+
+const SideNavLinks = ({ id, Icon, label }) => {
+    const { activeTab, setActiveTab } = useApp();
 
     return (
         <>

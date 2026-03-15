@@ -9,15 +9,14 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
-const UserManagement = ({ onAddClick }) => {
-    const [activeSubTab, setActiveSubTab] = useState('all-users');
+import { useNavigate } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
 
-    const users = [
-        { id: 1, name: 'James Anderson', email: 'james.anderson@nexus.com', role: 'Administrator', status: 'Active', color: 'text-purple-400', lastActive: 'Just now' },
-        { id: 2, name: 'Sarah Jenkins', email: 'sarah.j@nexus.com', role: 'Manager', status: 'Active', color: 'text-cyan-400', lastActive: '2 hours ago' },
-        { id: 3, name: 'Michael Chen', email: 'm.chen@nexus.com', role: 'Staff', status: 'Offline', color: 'text-slate-400', lastActive: '1 day ago' },
-        { id: 4, name: 'Emily Rodriguez', email: 'e.rodriguez@nexus.com', role: 'Staff', status: 'Active', color: 'text-slate-400', lastActive: '3 hours ago' },
-    ];
+const UserManagement = () => {
+    const navigate = useNavigate();
+    const { users } = useApp();
+    const onAddClick = () => navigate('/add-user');
+    const [activeSubTab, setActiveSubTab] = useState('all-users');
 
     const subTabs = [
         { id: 'all-users', label: 'All Users', icon: Users },
@@ -33,13 +32,6 @@ const UserManagement = ({ onAddClick }) => {
         >
             <div className="flex items-center justify-between">
                 <div>
-                    <div className="flex items-center gap-2 text-slate-500 text-[10px] font-bold uppercase tracking-widest leading-none mb-1">
-                        <span>Home</span>
-                        <span className="text-slate-700">/</span>
-                        <span>Admin</span>
-                        <span className="text-slate-700">/</span>
-                        <span className="text-slate-300">User Management</span>
-                    </div>
                     <h2 className="text-3xl font-bold text-white tracking-tight">User Management</h2>
                 </div>
                 <button

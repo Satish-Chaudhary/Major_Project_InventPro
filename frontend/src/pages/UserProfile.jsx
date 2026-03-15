@@ -36,12 +36,8 @@ const UserProfile = () => {
             className="p-6 space-y-8"
         >
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-500 text-[10px] font-bold uppercase tracking-widest">
-                    <span>Admin</span>
-                    <span className="text-slate-700">/</span>
-                    <span>Account</span>
-                    <span className="text-slate-700">/</span>
-                    <span className="text-slate-300">User Profile</span>
+                <div className="flex items-center gap-2 text-slate-500 text-[24px] font-bold uppercase tracking-widest">
+                    User Profile
                 </div>
                 <div className="flex gap-3">
                     <button className="flex items-center gap-2 bg-slate-800 border border-slate-700 text-slate-300 px-5 py-2 rounded-xl hover:bg-slate-700 transition-all text-xs font-bold uppercase tracking-widest leading-none">

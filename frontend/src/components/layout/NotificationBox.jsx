@@ -2,7 +2,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
 import { AlertTriangle, CheckCircle, Package } from 'lucide-react'
 
-const NotificationBox = ({ notifications, showNotifications }) => {
+import { useApp } from '../../context/AppContext';
+
+const NotificationBox = ({ showNotifications }) => {
+    const { notifications } = useApp();
     return (
         <>
             {showNotifications && (

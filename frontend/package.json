@@ -12,15 +12,17 @@
   "dependencies": {
     "@headlessui/react": "^2.2.9",
     "@tailwindcss/vite": "^4.1.18",
-    "axios": "^1.13.4",
+    "axios": "^1.13.5",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "dotenv": "^17.3.1",
     "framer-motion": "^12.33.0",
     "lucide-react": "^0.563.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.13.0",
+    "react-spinners": "^0.17.0",
     "recharts": "^3.7.0",
     "tailwindcss": "^4.1.18"
   },

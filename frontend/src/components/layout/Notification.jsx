@@ -1,7 +1,10 @@
 import { Bell } from 'lucide-react'
 import { clsx } from 'clsx';
 
-const Notification = ({ setShowNotifications, showNotifications, notifications }) => {
+import { useApp } from '../../context/AppContext';
+
+const Notification = ({ setShowNotifications, showNotifications }) => {
+    const { notifications } = useApp();
     return (
         <>
             <button

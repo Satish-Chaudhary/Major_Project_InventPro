@@ -1,7 +1,10 @@
 import { clsx } from 'clsx'
 import { Link } from 'react-router-dom'
 
-const AdminProfileButton = ({ activeTab, setActiveTab }) => {
+import { useApp } from '../../context/AppContext';
+
+const AdminProfileButton = () => {
+    const { activeTab } = useApp();
     return (
         <>
             <Link

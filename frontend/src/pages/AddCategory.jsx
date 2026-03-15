@@ -1,12 +1,23 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, X, Upload, Check,
     ChevronRight, FolderPlus, Info
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
-const AddCategory = ({ isOpen, onClose, onAdd }) => {
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
+
+const AddCategory = ({ isOpen = true }) => {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { addCategory, updateCategory } = useApp();
+    const onClose = () => navigate('/categories');
+
+    // Check if we are in edit mode based on state passed via navigation
+    const editCategory = location.state?.editCategory;
+
     const [formData, setFormData] = useState({
         name: '',
         slug: '',
@@ -15,7 +26,40 @@ const AddCategory = ({ isOpen, onClose, onAdd }) => {
         parent: 'none'
     });
 
+    useEffect(() => {
+        if (editCategory) {
+            setFormData({
+                name: editCategory.name || '',
+                slug: editCategory.name?.toLowerCase().replace(/ /g, '-') || '',
+                description: editCategory.description || '',
+                status: editCategory.status || 'active',
+                parent: editCategory.parent || 'none'
+            });
+        }
+    }, [editCategory]);
+
     if (!isOpen) return null;
+
+    const handleSave = () => {
+        const categoryData = {
+            id: editCategory ? editCategory.id : Date.now(),
+            name: formData.name || 'New Category',
+            count: editCategory ? editCategory.count : 0,
+            stockValue: editCategory ? editCategory.stockValue : '$0',
+            trend: editCategory ? editCategory.trend : '+0%',
+            color: editCategory ? editCategory.color : 'from-purple-500 to-indigo-500',
+            status: formData.status,
+            description: formData.description,
+            parent: formData.parent
+        };
+
+        if (editCategory) {
+            updateCategory(categoryData);
+        } else {
+            addCategory(categoryData);
+        }
+        onClose();
+    };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -36,12 +80,9 @@ const AddCategory = ({ isOpen, onClose, onAdd }) => {
                 {/* Header */}
                 <div className="px-8 py-6 border-b border-slate-800 flex items-center justify-between bg-linear-to-r from-purple-500/5 to-cyan-500/5">
                     <div>
-                        {/* <div className="flex items-center gap-2 text-slate-500 text-[10px] font-bold uppercase tracking-widest leading-none mb-1">
-                            <span>Categories</span>
-                            <ChevronRight className="w-3 h-3" />
-                            <span className="text-slate-300">Add New Category</span>
-                        </div> */}
-                        <h2 className="text-2xl font-bold text-white tracking-tight">Add Category</h2>
+                        <h2 className="text-2xl font-bold text-white tracking-tight">
+                            {editCategory ? 'Edit Category' : 'Add Category'}
+                        </h2>
                     </div>
                     <div className="flex items-center gap-3">
                         <button
@@ -51,10 +92,11 @@ const AddCategory = ({ isOpen, onClose, onAdd }) => {
                             Cancel
                         </button>
                         <button
+                            onClick={handleSave}
                             className="px-6 py-2.5 rounded-xl bg-linear-to-r from-purple-600 to-cyan-600 text-white font-bold hover:brightness-110 shadow-lg shadow-purple-500/20 flex items-center gap-2 transition-all text-xs uppercase tracking-widest"
                         >
                             <Check className="w-4 h-4" />
-                            Save Category
+                            {editCategory ? 'Update Category' : 'Save Category'}
                         </button>
                     </div>
                 </div>

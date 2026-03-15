@@ -1,94 +1,172 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, Lock, Mail, ArrowRight, Eye, EyeOff } from 'lucide-react';
-import RequestAccess from './RequestAccess';
-import ResetPassword from './ResetPassword';
+import { Lock, Mail, ArrowRight, Eye, ShieldCheck, EyeOff } from 'lucide-react';
+import InventProLogo from '../components/layout/InventProLogo';
+import { toast } from 'react-hot-toast';
+import { ClipLoader } from 'react-spinners';
+import { useNavigate } from 'react-router-dom';
+import { clsx } from 'clsx'
 
-const Login = ({ onLogin }) => {
+import { useApp } from '../context/AppContext';
+import { serverUrl } from '../App.jsx';
+import axios from 'axios';
+
+const Login = () => {
+    const { setIsLoggedIn, setUser } = useApp();
+    const navigate = useNavigate();
+    const [isFlipped, setIsFlipped] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const [view, setView] = useState('login'); // 'login', 'request', 'reset'
 
-    if (view === 'request') {
-        return <RequestAccess onBack={() => setView('login')} />;
-    }
+    // Form inputs
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    if (view === 'reset') {
-        return <ResetPassword onBack={() => setView('login')} />;
-    }
+    const handleLogin = async (e, type) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            const response = await axios.post(`${serverUrl}/api/auth/login`, { email, password }, { withCredentials: true });
+            if (response.data.success) {
+                setIsLoggedIn(true);
+                setUser(response.data.user);
+                toast.success(`Welcome back, ${response.data.user.fullName}!`);
+                navigate('/dashboard');
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Login failed");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
-        <div className="min-h-screen bg-[#050505] flex items-center justify-center p-6 relative overflow-hidden">
+        <div className="min-h-screen bg-[#050505] flex items-center justify-center p-6 relative overflow-hidden perspective-1000">
             {/* Background Glows */}
             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-cyan-600/10 rounded-full blur-[120px] pointer-events-none" />
 
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-md"
-            >
-                <div className="bg-slate-900/40 backdrop-blur-2xl border border-slate-800/60 rounded-3xl p-10 shadow-3xl">
-                    <div className="flex flex-col items-center text-center mb-10">
-                        <div className="w-14 h-14 bg-linear-to-br from-purple-600 to-cyan-600 rounded-2xl flex items-center justify-center shadow-xl shadow-purple-500/20 mb-6 group cursor-default">
-                            <Package className="w-8 h-8 text-white group-hover:scale-110 transition-transform" />
-                        </div>
-                        <h1 className="text-3xl font-bold text-white tracking-tight leading-none mb-2">InventPro</h1>
-                        <p className="text-slate-400 text-sm mt-1 tracking-wide">Enter your credentials to access the admin portal.</p>
+            {/* Global Top-Right Toggle Button */}
+            <div className="absolute top-8 right-8 z-50">
+                <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setIsFlipped(!isFlipped)}
+                    className="bg-slate-900/80 backdrop-blur-xl hover:bg-slate-800 border border-slate-800/50 px-5 py-2.5 rounded-full flex items-center gap-3 transition-all group shadow-2xl shadow-black/50"
+                >
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 group-hover:text-white transition-colors">
+                        {isFlipped ? "Staff Portal" : "Admin Portal"}
+                    </span>
+                    <div className={clsx(
+                        "w-8 h-8 rounded-full flex items-center justify-center transition-all",
+                        isFlipped ? "bg-purple-500/20 text-purple-400" : "bg-slate-800 text-slate-500"
+                    )}>
+                        <ShieldCheck className="w-4 h-4" />
                     </div>
+                </motion.button>
+            </div>
 
-                    <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); onLogin(); }}>
-                        <div className="space-y-2 group">
-                            <div className="relative">
-                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-purple-400 transition-colors" />
-                                <input
-                                    type="email"
-                                    placeholder='Enter Your Email'
-                                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-purple-500/50 transition-all focus:ring-4 focus:ring-purple-500/5"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-2 group">
-                            <div className="flex justify-end pr-1">
-                                <button
-                                    type="button"
-                                    onClick={() => setView('reset')}
-                                    className="text-[10px] text-purple-400 hover:text-purple-300 font-black uppercase tracking-widest transition-colors"
-                                >
-                                    Forgot password?
-                                </button>
-                            </div>
-                            <div className="relative">
-                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-purple-400 transition-colors" />
-                                <input
-                                    type={showPassword ? "text" : "password"}
-                                    placeholder='Enter Your password'
-                                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-12 pr-12 py-4 text-white focus:outline-none focus:border-purple-500/50 transition-all focus:ring-4 focus:ring-purple-500/5"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                                >
-                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                </button>
-                            </div>
-                        </div>
-
-                        <button
-                            type="submit"
-                            className="w-full bg-linear-to-r from-purple-600 to-cyan-600 text-white font-black uppercase tracking-widest py-4 rounded-xl shadow-xl shadow-purple-500/20 hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-3 group mt-8"
+            <div className="w-full max-w-md flex flex-col items-center gap-8">
+                <div className="w-full relative h-[520px]">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={isFlipped ? "admin" : "staff"}
+                            initial={{ rotateY: isFlipped ? -180 : 180, opacity: 0 }}
+                            animate={{ rotateY: 0, opacity: 1 }}
+                            exit={{ rotateY: isFlipped ? 180 : -180, opacity: 0 }}
+                            transition={{ duration: 0.6, type: "spring", stiffness: 260, damping: 20 }}
+                            className="w-full h-full"
+                            style={{ transformStyle: "preserve-3d" }}
                         >
-                            LogIn
-                            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                        </button>
-                    </form>
+                            <div className="bg-slate-900/40 backdrop-blur-2xl border border-slate-800/60 rounded-3xl px-10 py-16 shadow-3xl relative h-full flex flex-col justify-center">
+
+                                <div className="mb-8">
+                                    <InventProLogo view="login" />
+                                    <h2 className="text-center text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2">
+                                        {isFlipped ? "🔐 Administrative Access" : "🏢 Staff Workstation"}
+                                    </h2>
+                                </div>
+
+                                <form className="space-y-6" onSubmit={(e) => handleLogin(e, isFlipped ? 'admin' : 'staff')}>
+                                    <div className="space-y-4">
+                                        <div className="relative group">
+                                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-purple-400 transition-colors" />
+                                            <input
+                                                type="email"
+                                                placeholder="User Email"
+                                                required
+                                                value={email}
+                                                onChange={(e) => setEmail(e.target.value)}
+                                                className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-purple-500/50 transition-all font-medium"
+                                            />
+                                        </div>
+
+                                        <div className="relative group">
+                                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-purple-400 transition-colors" />
+                                            <input
+                                                type={showPassword ? "text" : "password"}
+                                                placeholder="User Password"
+                                                required
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
+                                                className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-12 pr-12 py-4 text-white focus:outline-none focus:border-purple-500/50 transition-all font-medium"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                            >
+                                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className={clsx(
+                                            "w-full text-white font-black uppercase tracking-widest py-4 rounded-xl shadow-xl transition-all flex items-center justify-center gap-3 group mt-4",
+                                            isFlipped ? "bg-linear-to-r from-purple-600 to-indigo-600 shadow-purple-500/20" : "bg-linear-to-r from-slate-700 to-slate-900 shadow-slate-900/50"
+                                        )}
+                                    >
+                                        {loading ? <ClipLoader color='#fff' size={24} /> : <>Secure Login <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" /></>}
+                                    </button>
+                                </form>
+                            </div>
+                        </motion.div>
+                    </AnimatePresence>
                 </div>
 
-                <p className="text-center text-slate-500 text-sm mt-8 font-medium">
-                    Don't have an account? <button onClick={() => setView('request')} className="text-purple-400 hover:text-purple-300 font-bold transition-colors">Request Access</button>
-                </p>
-            </motion.div>
+                {/* Outside Container Footer */}
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                    className="text-center"
+                >
+                    {!isFlipped ? (
+                        <p className="text-slate-500 text-[11px] font-bold uppercase tracking-[0.2em] flex items-center gap-2">
+                            Don't have an account? 
+                            <button 
+                                onClick={() => navigate('/request-access')} 
+                                className="text-purple-400 hover:text-purple-300 hover:underline transition-all"
+                            >
+                                Request Access
+                            </button>
+                        </p>
+                    ) : (
+                        <p className="text-slate-500 text-[11px] font-bold uppercase tracking-[0.2em] flex items-center gap-2">
+                            Primary Admin Only? 
+                            <button 
+                                onClick={() => navigate('/register-admin')} 
+                                className="text-cyan-400 hover:text-cyan-300 hover:underline transition-all"
+                            >
+                                Register Admin
+                            </button>
+                        </p>
+                    )}
+                </motion.div>
+            </div>
         </div>
     );
 };

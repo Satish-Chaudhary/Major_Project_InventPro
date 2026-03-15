@@ -7,7 +7,11 @@ import {
 } from 'recharts';
 import { clsx } from 'clsx';
 
-const Dashboard = ({ stats, stockTrendData, categoryData, recentActivity, inventory, getStatusBadge }) => {
+import { useApp } from '../context/AppContext';
+
+const Dashboard = () => {
+    const { dashboardData } = useApp();
+    const { stats, stockTrendData, categoryData, recentActivity, inventory, getStatusBadge } = dashboardData;
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}

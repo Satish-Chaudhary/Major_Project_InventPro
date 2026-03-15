@@ -7,7 +7,13 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
-const AddUser = ({ isOpen, onClose, onAdd }) => {
+import { useNavigate } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
+
+const AddUser = ({ isOpen = true }) => {
+    const navigate = useNavigate();
+    const { addUser } = useApp();
+    const onClose = () => navigate('/users');
     const [formData, setFormData] = useState({
         role: 'Staff Member',
         department: 'General',
@@ -50,6 +56,19 @@ const AddUser = ({ isOpen, onClose, onAdd }) => {
                             Cancel
                         </button>
                         <button
+                            onClick={() => {
+                                addUser({
+                                    id: Date.now(),
+                                    name: formData.name || 'New User',
+                                    email: formData.email || 'user@company.com',
+                                    role: formData.role,
+                                    status: formData.status === 'active' ? 'Active' : 'Offline',
+                                    color: 'text-slate-400',
+                                    lastActive: 'Just now',
+                                    avatar: `https://i.pravatar.cc/100?u=${Date.now()}`
+                                });
+                                onClose();
+                            }}
                             className="px-8 py-3 rounded-2xl bg-linear-to-r from-purple-600 to-cyan-600 text-white font-black uppercase tracking-widest hover:brightness-110 shadow-lg shadow-purple-500/20 flex items-center gap-2 transition-all text-[10px]"
                         >
                             <Check className="w-4 h-4" />

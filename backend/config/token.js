@@ -9,5 +9,4 @@ export const generateToken = (userId) => {
         console.log(`Generating Token Error : ${error}`);
         return null;
     }
-
 }

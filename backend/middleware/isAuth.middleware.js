@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import User from "../models/auth.model.js";
 
 export const authMiddleware = async (req, res, next) => {
     try {
@@ -12,6 +13,18 @@ export const authMiddleware = async (req, res, next) => {
         }
 
         const verify = jwt.verify(token, process.env.JWT_SECRET);
+        
+        // Fetch user to get current role and details
+        const user = await User.findById(verify.userId).select('-password -confirmPassword');
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        if (user.status !== 'active') {
+            return res.status(403).json({ success: false, message: "Account is not active" });
+        }
+
+        req.user = user;
         req.userId = verify.userId;
         next();
 

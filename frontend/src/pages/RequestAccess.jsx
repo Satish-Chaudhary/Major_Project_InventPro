@@ -1,16 +1,62 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Package, Mail, User, Building2, Lock,
+    Package, Mail, User, Lock,
     Send, ArrowLeft, CheckCircle2, Info,
     ShieldCheck, ArrowRight, Eye, EyeOff
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import InventProLogo from '../components/layout/InventProLogo';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { serverUrl } from '../App';
+import { ClipLoader } from 'react-spinners';
+import { toast } from 'react-hot-toast';
 
-const RequestAccess = ({ onBack }) => {
+const RequestAccess = () => {
+    const navigate = useNavigate();
+
     const [submitted, setSubmitted] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+    // Request access state
+    const [fullName, setFullName] = useState('');
+    const [email, setEmail] = useState('');
+    const [requestedRole, setRequestedRole] = useState('staff');
+    const [message, setMessage] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [err, setErr] = useState('');
+
+    const requestAccess = async () => {
+        setLoading(true);
+        setErr('');
+        try {
+            const response = await axios.post(`${serverUrl}/api/auth/request-access`,
+                {
+                    fullName,
+                    email,
+                    role: requestedRole,
+                    password,
+                    confirmPassword
+                },
+                { withCredentials: true })
+
+            if (response.data.success) {
+                setLoading(false);
+                setSubmitted(true);
+            }
+
+        } catch (error) {
+            console.log(error);
+            const errorMessage = error.response?.data?.message || error.message;
+            setErr(errorMessage);
+            toast.error(errorMessage);
+            setLoading(false);
+        }
+    }
 
     return (
         <div className="min-h-screen bg-[#050505] flex items-center justify-center p-6 relative overflow-hidden font-sans">
@@ -20,7 +66,7 @@ const RequestAccess = ({ onBack }) => {
 
             {/* Top Left Navigation */}
             <button
-                onClick={onBack}
+                onClick={() => navigate('/login')}
                 className="absolute top-10 left-10 flex items-center gap-3 text-slate-500 hover:text-white transition-all font-bold group z-50"
             >
                 <div className="w-10 h-10 rounded-full bg-slate-900/50 backdrop-blur-xl border border-slate-800 flex items-center justify-center group-hover:bg-purple-500/10 group-hover:border-purple-500/30 transition-all">
@@ -45,17 +91,14 @@ const RequestAccess = ({ onBack }) => {
                                 exit={{ opacity: 0, scale: 0.95 }}
                                 className="space-y-6"
                             >
-                                <div className="flex flex-col items-center text-center">
-                                    <div className="w-14 h-14 bg-linear-to-br from-purple-600 to-cyan-600 rounded-2xl flex items-center justify-center shadow-xl shadow-purple-500/20 mb-6 group cursor-default">
-                                        <Package className="w-8 h-8 text-white group-hover:scale-110 transition-transform" />
-                                    </div>
-                                    <h1 className="text-3xl font-bold text-white tracking-tight leading-none mb-2">Request Access</h1>
-                                    <p className="text-slate-400 text-sm mt-1 tracking-wide">Nexus Inventory is currently invite-only. Fill out the form below.</p>
-                                </div>
+                                <InventProLogo view="request access" />
 
                                 <form
                                     className="space-y-4 text-left"
-                                    onSubmit={(e) => { e.preventDefault(); setSubmitted(true); }}
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        requestAccess();
+                                    }}
                                 >
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2 group">
@@ -64,6 +107,10 @@ const RequestAccess = ({ onBack }) => {
                                                 <input
                                                     type="text"
                                                     required
+                                                    value={fullName}
+                                                    onChange={(e) => {
+                                                        setFullName(e.target.value);
+                                                    }}
                                                     placeholder="Jane Doe"
                                                     className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-12 pr-4 py-4 text-white text-sm focus:outline-none focus:border-purple-500/50 transition-all focus:ring-4 focus:ring-purple-500/5"
                                                 />
@@ -76,6 +123,10 @@ const RequestAccess = ({ onBack }) => {
                                                 <input
                                                     type="email"
                                                     required
+                                                    value={email}
+                                                    onChange={(e) => {
+                                                        setEmail(e.target.value);
+                                                    }}
                                                     placeholder="jane.doe@company.com"
                                                     className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-12 pr-4 py-4 text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-all focus:ring-4 focus:ring-cyan-500/5"
                                                 />
@@ -85,13 +136,18 @@ const RequestAccess = ({ onBack }) => {
 
                                     <div className="space-y-2 group">
                                         <div className="relative">
-                                            <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
-                                            <input
-                                                type="text"
+                                            <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-purple-400 transition-colors" />
+                                            <select
                                                 required
-                                                placeholder="Operations"
-                                                className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-12 pr-4 py-4 text-white text-sm focus:outline-none focus:border-emerald-500/50 transition-all focus:ring-4 focus:ring-emerald-500/5"
-                                            />
+                                                value={requestedRole}
+                                                onChange={(e) => setRequestedRole(e.target.value)}
+                                                className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-12 pr-4 py-4 text-white text-sm focus:outline-none focus:border-purple-500/50 transition-all focus:ring-4 focus:ring-purple-500/5 appearance-none"
+                                            >
+                                                <option value="staff">Staff</option>
+                                                <option value="manager">Manager</option>
+                                                <option value="accountant">Accountant</option>
+                                                <option value="admin">Admin</option>
+                                            </select>
                                         </div>
                                     </div>
 
@@ -102,6 +158,10 @@ const RequestAccess = ({ onBack }) => {
                                                 <input
                                                     type={showPassword ? "text" : "password"}
                                                     required
+                                                    value={password}
+                                                    onChange={(e) => {
+                                                        setPassword(e.target.value)
+                                                    }}
                                                     className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-12 pr-12 py-4 text-white text-sm focus:outline-none focus:border-purple-500/50 transition-all focus:ring-4 focus:ring-purple-500/5"
                                                 />
                                                 <button
@@ -120,6 +180,10 @@ const RequestAccess = ({ onBack }) => {
                                                 <input
                                                     type={showConfirmPassword ? "text" : "password"}
                                                     required
+                                                    value={confirmPassword}
+                                                    onChange={(e) => {
+                                                        setConfirmPassword(e.target.value)
+                                                    }}
                                                     className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-12 pr-12 py-4 text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-all focus:ring-4 focus:ring-cyan-500/5"
                                                 />
                                                 <button
@@ -136,17 +200,32 @@ const RequestAccess = ({ onBack }) => {
                                     <div className="space-y-2 group">
                                         <textarea
                                             required
+                                            value={message}
+                                            onChange={(e) => {
+                                                setMessage(e.target.value)
+                                            }}
                                             placeholder="Briefly describe your role..."
                                             className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500/50 transition-all focus:ring-4 focus:ring-purple-500/5 h-24 resize-none"
                                         />
                                     </div>
 
+                                    {err && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-center gap-3"
+                                        >
+                                            <Info className="w-5 h-5 text-red-500 shrink-0" />
+                                            <p className="text-red-500 text-xs font-bold uppercase tracking-wider">{err}</p>
+                                        </motion.div>
+                                    )}
+
                                     <button
                                         type="submit"
                                         className="w-full bg-linear-to-r from-purple-600 to-cyan-600 text-white font-black uppercase tracking-[0.2em] py-4 rounded-xl shadow-xl shadow-purple-500/20 hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-3 mt-4 group"
                                     >
-                                        Send Request
-                                        <Send className="w-5 h-5 group-hover:-translate-y-1 group-hover:translate-x-1 transition-transform" />
+                                        {loading ? <ClipLoader color='#fff' size={30} /> : <>Send Request <Send className="w-5 h-5 group-hover:-translate-y-1 group-hover:translate-x-1 transition-transform" /></>}
+
                                     </button>
                                 </form>
                             </motion.div>
@@ -167,7 +246,7 @@ const RequestAccess = ({ onBack }) => {
                                     </p>
                                 </div>
                                 <button
-                                    onClick={onBack}
+                                    onClick={() => navigate('/login')}
                                     className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-xl transition-all border border-slate-700 flex items-center justify-center gap-2 group"
                                 >
                                     <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />

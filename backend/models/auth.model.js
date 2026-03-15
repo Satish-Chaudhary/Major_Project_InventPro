@@ -9,13 +9,26 @@ const UserSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    phone: {
+        type: String,
+    },
     password: {
         type: String,
         required: true
     },
-    department: {
+    confirmPassword: {
         type: String,
         required: true
+    },
+    role: {
+        type: String,
+        enum: ['admin', 'manager', 'accountant', 'staff', 'warehouse staff', 'sales staff'],
+        default: 'staff'
+    },
+    status: {
+        type: String,
+        enum: ['pending', 'active', 'rejected'],
+        default: 'pending'
     },
     resetOtp: {
         type: String
