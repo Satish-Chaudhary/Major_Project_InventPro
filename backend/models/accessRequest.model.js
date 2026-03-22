@@ -18,7 +18,7 @@ const AccessRequestSchema = new mongoose.Schema({
     },
     requestedRole: {
         type: String,
-        enum: ['admin', 'manager', 'warehouse staff', 'staff', 'accountant'],
+        enum: ['root', 'admin', 'manager', 'accountant', 'staff', 'warehouse staff', 'sales staff'],
         default: 'staff'
     },
     message: {

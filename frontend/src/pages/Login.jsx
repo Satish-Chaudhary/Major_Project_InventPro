@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Mail, ArrowRight, Eye, ShieldCheck, EyeOff } from 'lucide-react';
 import InventProLogo from '../components/layout/InventProLogo';
 import { toast } from 'react-hot-toast';
 import { ClipLoader } from 'react-spinners';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx'
 
 import { useApp } from '../context/AppContext';
@@ -14,13 +14,22 @@ import axios from 'axios';
 const Login = () => {
     const { setIsLoggedIn, setUser } = useApp();
     const navigate = useNavigate();
-    const [isFlipped, setIsFlipped] = useState(false);
+    const location = useLocation();
+    
+    // Check if we came from admin registration
+    const [isFlipped, setIsFlipped] = useState(location.state?.isAdmin || false);
     const [showPassword, setShowPassword] = useState(false);
 
     // Form inputs
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (location.state?.isAdmin) {
+            setIsFlipped(true);
+        }
+    }, [location.state]);
 
     const handleLogin = async (e, type) => {
         e.preventDefault();
@@ -93,7 +102,7 @@ const Login = () => {
                                             <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-purple-400 transition-colors" />
                                             <input
                                                 type="email"
-                                                placeholder="User Email"
+                                                placeholder={isFlipped ? "Admin Email Address" : "Staff Email Address"}
                                                 required
                                                 value={email}
                                                 onChange={(e) => setEmail(e.target.value)}
@@ -105,7 +114,7 @@ const Login = () => {
                                             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-purple-400 transition-colors" />
                                             <input
                                                 type={showPassword ? "text" : "password"}
-                                                placeholder="User Password"
+                                                placeholder={isFlipped ? "Admin Password" : "Staff Password"}
                                                 required
                                                 value={password}
                                                 onChange={(e) => setPassword(e.target.value)}
@@ -125,8 +134,8 @@ const Login = () => {
                                         type="submit"
                                         disabled={loading}
                                         className={clsx(
-                                            "w-full text-white font-black uppercase tracking-widest py-4 rounded-xl shadow-xl transition-all flex items-center justify-center gap-3 group mt-4",
-                                            isFlipped ? "bg-linear-to-r from-purple-600 to-indigo-600 shadow-purple-500/20" : "bg-linear-to-r from-slate-700 to-slate-900 shadow-slate-900/50"
+                                            "w-full text-white font-black uppercase tracking-widest py-4 rounded-xl shadow-xl transition-all flex items-center justify-center gap-3 group mt-4 h-14",
+                                            "bg-linear-to-r from-purple-600 to-indigo-600 shadow-purple-500/20"
                                         )}
                                     >
                                         {loading ? <ClipLoader color='#fff' size={24} /> : <>Secure Login <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" /></>}
@@ -146,9 +155,9 @@ const Login = () => {
                 >
                     {!isFlipped ? (
                         <p className="text-slate-500 text-[11px] font-bold uppercase tracking-[0.2em] flex items-center gap-2">
-                            Don't have an account? 
-                            <button 
-                                onClick={() => navigate('/request-access')} 
+                            Don't have an account?
+                            <button
+                                onClick={() => navigate('/request-access')}
                                 className="text-purple-400 hover:text-purple-300 hover:underline transition-all"
                             >
                                 Request Access
@@ -156,9 +165,9 @@ const Login = () => {
                         </p>
                     ) : (
                         <p className="text-slate-500 text-[11px] font-bold uppercase tracking-[0.2em] flex items-center gap-2">
-                            Primary Admin Only? 
-                            <button 
-                                onClick={() => navigate('/register-admin')} 
+                            Primary Admin Registration?
+                            <button
+                                onClick={() => navigate('/register-admin')}
                                 className="text-cyan-400 hover:text-cyan-300 hover:underline transition-all"
                             >
                                 Register Admin

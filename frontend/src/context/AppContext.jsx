@@ -42,28 +42,140 @@ export const AppProvider = ({ children }) => {
 
 
     // Data State
-    const [notifications, setNotifications] = useState([
-        { id: 1, title: 'Low Stock Alert', message: 'Mechanical Keyboard is below minimum level', time: '5m ago', type: 'warning', read: false },
-        { id: 2, title: 'Order Received', message: 'New order #ORD-1234 from Sarah Connor', time: '1h ago', type: 'success', read: false },
-        { id: 3, title: 'System Update', message: 'InventPro v2.1.0 is now live with new charts', time: '3h ago', type: 'info', read: true },
-    ]);
+    const [lastReadTime, setLastReadTime] = useState(parseInt(localStorage.getItem('lastReadAuditTime')) || 0);
+    const [inventory, setInventory] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [allRoles, setAllRoles] = useState([]);
+    const [departments, setDepartments] = useState([]);
+    const [auditLogs, setAuditLogs] = useState([]);
 
-    const [inventory, setInventory] = useState([
-        { id: 1, name: 'Wireless Mouse', sku: 'WM-001', category: 'Electronics', stock: 45, minStock: 20, price: 29.99, status: 'in-stock' },
-        { id: 2, name: 'Mechanical Keyboard', sku: 'MK-002', category: 'Electronics', stock: 12, minStock: 15, price: 89.99, status: 'low-stock' },
-        { id: 3, name: 'USB-C Hub', sku: 'UH-003', category: 'Accessories', stock: 67, minStock: 25, price: 49.99, status: 'in-stock' },
-        { id: 4, name: 'Monitor Stand', sku: 'MS-004', category: 'Office', stock: 8, minStock: 10, price: 39.99, status: 'low-stock' },
-        { id: 5, name: 'Webcam HD', sku: 'WC-005', category: 'Electronics', stock: 0, minStock: 15, price: 79.99, status: 'out-of-stock' },
-    ]);
+    const fetchProducts = async () => {
+        try {
+            const response = await axios.get(`${serverUrl}/api/products/all`, { withCredentials: true });
+            if (response.data.success) {
+                setInventory(response.data.products);
+            }
+        } catch (error) {
+            console.error("Error fetching products:", error);
+            // Fallback during development if DB is empty
+            // setInventory([]); 
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    const [categories, setCategories] = useState([
-        { id: 1, name: 'Electronics', count: 450, stockValue: '$124,500', trend: '+12%', color: 'from-purple-500 to-indigo-500' },
-        { id: 2, name: 'Furniture', count: 120, stockValue: '$86,200', trend: '-5%', color: 'from-cyan-500 to-blue-500' },
-        { id: 3, name: 'Accessories', count: 890, stockValue: '$42,300', trend: '+18%', color: 'from-emerald-500 to-teal-500' },
-        { id: 4, name: 'Office Supplies', count: 340, stockValue: '$31,900', trend: '+2%', color: 'from-amber-500 to-orange-500' },
-        { id: 5, name: 'Laptops', count: 85, stockValue: '$210,000', trend: '+24%', color: 'from-pink-500 to-rose-500' },
-        { id: 6, name: 'Smartphones', count: 160, stockValue: '$145,000', trend: '+15%', color: 'from-violet-500 to-purple-500' },
-    ]);
+    const fetchRolesAndDepts = async () => {
+        try {
+            const [rolesRes, deptsRes] = await Promise.all([
+                axios.get(`${serverUrl}/api/admin/roles/all`, { withCredentials: true }),
+                axios.get(`${serverUrl}/api/admin/departments/all`, { withCredentials: true })
+            ]);
+            if (rolesRes.data.success) setAllRoles(rolesRes.data.roles);
+            if (deptsRes.data.success) setDepartments(deptsRes.data.departments);
+        } catch (error) {
+            console.error("Error fetching roles/depts:", error);
+        }
+    };
+
+    const fetchUsers = async (filters = {}) => {
+        try {
+            const params = new URLSearchParams(filters).toString();
+            const response = await axios.get(`${serverUrl}/api/admin/users/all?${params}`, { withCredentials: true });
+            if (response.data.success) {
+                setUsers(response.data.users);
+            }
+        } catch (error) {
+            console.error("Error fetching users:", error);
+        }
+    };
+
+    const fetchAuditLogs = async () => {
+        try {
+            const response = await axios.get(`${serverUrl}/api/admin/audit-logs/all`, { withCredentials: true });
+            if (response.data.success) {
+                setAuditLogs(response.data.logs);
+            }
+        } catch (error) {
+            console.error("Error fetching audit logs:", error);
+        }
+    };
+
+    useEffect(() => {
+        if (isLoggedIn) {
+            fetchProducts();
+            fetchCategories();
+            fetchRolesAndDepts();
+            fetchUsers();
+            fetchAuditLogs();
+        }
+    }, [isLoggedIn]);
+
+    const [categories, setCategories] = useState([]);
+
+    const fetchCategories = async () => {
+        try {
+            const response = await axios.get(`${serverUrl}/api/categories/all`, { withCredentials: true });
+            if (response.data.success) {
+                setCategories(response.data.categories);
+            }
+        } catch (error) {
+            console.error("Error fetching categories:", error);
+        }
+    };
+
+    const addRole = async (roleData) => {
+        try {
+            const response = await axios.post(`${serverUrl}/api/admin/roles/add`, roleData, { withCredentials: true });
+            if (response.data.success) {
+                setAllRoles([...allRoles, response.data.role]);
+                toast.success('Role created successfully');
+                fetchAuditLogs();
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to create role');
+        }
+    };
+
+    const updateRole = async (roleData) => {
+        try {
+            const { _id, ...data } = roleData;
+            const response = await axios.put(`${serverUrl}/api/admin/roles/update/${_id}`, data, { withCredentials: true });
+            if (response.data.success) {
+                setAllRoles(allRoles.map(r => r._id === _id ? response.data.role : r));
+                toast.success('Role updated successfully');
+                fetchAuditLogs();
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update role');
+        }
+    };
+
+    const deleteRole = async (id) => {
+        try {
+            const response = await axios.delete(`${serverUrl}/api/admin/roles/delete/${id}`, { withCredentials: true });
+            if (response.data.success) {
+                setAllRoles(allRoles.filter(r => r._id !== id));
+                toast.success('Role deleted successfully');
+                fetchAuditLogs();
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete role');
+        }
+    };
+
+    const addDepartment = async (deptData) => {
+        try {
+            const response = await axios.post(`${serverUrl}/api/admin/departments/add`, deptData, { withCredentials: true });
+            if (response.data.success) {
+                setDepartments([...departments, response.data.department]);
+                toast.success('Department created successfully');
+                fetchAuditLogs();
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to create department');
+        }
+    };
+
 
     const [suppliers, setSuppliers] = useState([
         { id: 1, company: 'TechSupplies Inc.', code: 'SUP-001', contact: 'Sarah Jenkins', email: 'sarah@techsupplies.com', phone: '+1 (555) 123-4567', categories: ['Electronics', 'Hardware'], status: 'Active', reliability: 98, location: 'San Jose, CA' },
@@ -78,12 +190,7 @@ export const AppProvider = ({ children }) => {
         { id: '#ORD-2023-881', date: 'Oct 22, 2023', time: '11:20 AM', type: 'inward', entity: 'Office Depot', items: '50 units', value: '$2,100.00', status: 'completed' },
     ]);
 
-    const [users, setUsers] = useState([
-        { id: 1, name: 'James Anderson', email: 'james.anderson@nexus.com', role: 'Administrator', status: 'Active', color: 'text-purple-400', lastActive: 'Just now', avatar: 'https://i.pravatar.cc/100?u=1' },
-        { id: 2, name: 'Sarah Jenkins', email: 'sarah.j@nexus.com', role: 'Manager', status: 'Active', color: 'text-cyan-400', lastActive: '2 hours ago', avatar: 'https://i.pravatar.cc/100?u=2' },
-        { id: 3, name: 'Michael Chen', email: 'm.chen@nexus.com', role: 'Staff', status: 'Offline', color: 'text-slate-400', lastActive: '1 day ago', avatar: 'https://i.pravatar.cc/100?u=3' },
-        { id: 4, name: 'Emily Rodriguez', email: 'e.rodriguez@nexus.com', role: 'Staff', status: 'Active', color: 'text-slate-400', lastActive: '3 hours ago', avatar: 'https://i.pravatar.cc/100?u=4' },
-    ]);
+    const [users, setUsers] = useState([]);
 
     // Update active tab based on URL
     useEffect(() => {
@@ -109,40 +216,156 @@ export const AppProvider = ({ children }) => {
         }
     };
 
-    const addProduct = (product) => {
-        setInventory([product, ...inventory]);
-        toast.success('Product added successfully');
-        setShowAddModal(false);
+    const addProduct = async (product) => {
+        try {
+            const formData = new FormData();
+            Object.keys(product).forEach(key => {
+                if (key === 'productImage' && product[key] instanceof File) {
+                    formData.append('productImage', product[key]);
+                } else {
+                    formData.append(key, product[key]);
+                }
+            });
+
+            const response = await axios.post(`${serverUrl}/api/products/add`, formData, {
+                withCredentials: true,
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            if (response.data.success) {
+                setInventory([response.data.product, ...inventory]);
+                toast.success('Product added successfully');
+                fetchAuditLogs();
+                setShowAddModal(false);
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to add product');
+        }
     };
 
-    const deleteProduct = (id) => {
-        setInventory(inventory.filter(item => item.id !== id));
-        toast.success('Product deleted successfully');
+    const deleteProduct = async (id) => {
+        try {
+            const response = await axios.delete(`${serverUrl}/api/products/delete/${id}`, { withCredentials: true });
+            if (response.data.success) {
+                setInventory(inventory.filter(item => item._id !== id));
+                toast.success('Product deleted successfully');
+                fetchAuditLogs();
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete product');
+        }
     };
 
-    const deleteMultipleProducts = (ids) => {
-        setInventory(inventory.filter(item => !ids.includes(item.id)));
-        toast.success(`${ids.length} products deleted successfully`);
+    const deleteMultipleProducts = async (ids) => {
+        try {
+            // Backend currently only has delete individual, but we can do a loop or add a bulk delete later
+            // For now, let's just delete them individually via loop if we have many
+            // Better to add a bulk delete route later.
+            let successCount = 0;
+            for (const id of ids) {
+                const response = await axios.delete(`${serverUrl}/api/products/delete/${id}`, { withCredentials: true });
+                if (response.data.success) {
+                    successCount++;
+                }
+            }
+            setInventory(inventory.filter(item => !ids.includes(item._id)));
+            toast.success(`${successCount} products deleted successfully`);
+        } catch (error) {
+            toast.error('Failed to delete some products');
+        }
     };
 
-    const updateProduct = (updatedProduct) => {
-        setInventory(inventory.map(item => item.id === updatedProduct.id ? updatedProduct : item));
-        toast.success('Product updated successfully');
+    const updateProduct = async (updatedProduct) => {
+        try {
+            const { _id, ...rest } = updatedProduct;
+            const formData = new FormData();
+            Object.keys(rest).forEach(key => {
+                if (key === 'productImage' && rest[key] instanceof File) {
+                    formData.append('productImage', rest[key]);
+                } else {
+                    formData.append(key, rest[key]);
+                }
+            });
+
+            const response = await axios.put(`${serverUrl}/api/products/update/${_id}`, formData, {
+                withCredentials: true,
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            if (response.data.success) {
+                setInventory(inventory.map(item => item._id === _id ? response.data.product : item));
+                toast.success('Product updated successfully');
+                fetchAuditLogs();
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update product');
+        }
     };
 
-    const addCategory = (category) => {
-        setCategories([category, ...categories]);
-        toast.success('Category added successfully');
+    const addCategory = async (category) => {
+        try {
+            const formData = new FormData();
+            Object.keys(category).forEach(key => {
+                if (key === 'thumbnail' && category[key] instanceof File) {
+                    formData.append('thumbnail', category[key]);
+                } else {
+                    formData.append(key, category[key]);
+                }
+            });
+
+            const response = await axios.post(`${serverUrl}/api/categories/add`, formData, {
+                withCredentials: true,
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            if (response.data.success) {
+                setCategories([response.data.category, ...categories]);
+                toast.success('Category added successfully');
+                fetchAuditLogs();
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to add category');
+        }
     };
 
-    const deleteCategory = (id) => {
-        setCategories(categories.filter(cat => cat.id !== id));
-        toast.success('Category deleted successfully');
+    const deleteCategory = async (id) => {
+        try {
+            const response = await axios.delete(`${serverUrl}/api/categories/delete/${id}`, { withCredentials: true });
+            if (response.data.success) {
+                setCategories(categories.filter(cat => cat._id !== id));
+                toast.success('Category deleted successfully');
+                fetchAuditLogs();
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete category');
+        }
     };
 
-    const updateCategory = (updatedCategory) => {
-        setCategories(categories.map(cat => cat.id === updatedCategory.id ? updatedCategory : cat));
-        toast.success('Category updated successfully');
+    const updateCategory = async (updatedCategory) => {
+        try {
+            const { _id, ...rest } = updatedCategory;
+            const formData = new FormData();
+            Object.keys(rest).forEach(key => {
+                if (key === 'thumbnail' && rest[key] instanceof File) {
+                    formData.append('thumbnail', rest[key]);
+                } else {
+                    formData.append(key, rest[key]);
+                }
+            });
+
+            const response = await axios.put(`${serverUrl}/api/categories/update/${_id}`, formData, {
+                withCredentials: true,
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            if (response.data.success) {
+                setCategories(categories.map(cat => cat._id === _id ? response.data.category : cat));
+                toast.success('Category updated successfully');
+                fetchAuditLogs();
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update category');
+        }
     };
 
     const addSupplier = (supplier) => {
@@ -155,9 +378,45 @@ export const AppProvider = ({ children }) => {
         toast.success('Order created successfully');
     };
 
-    const addUser = (user) => {
-        setUsers([user, ...users]);
-        toast.success('User added successfully');
+    const addUser = async (userData) => {
+        try {
+            const response = await axios.post(`${serverUrl}/api/admin/users/add`, userData, { withCredentials: true });
+            if (response.data.success) {
+                setUsers([response.data.user, ...users]);
+                toast.success('User created successfully');
+                fetchAuditLogs();
+                return true;
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to create user');
+            return false;
+        }
+    };
+
+    const updateAdminUser = async (id, userData) => {
+        try {
+            const response = await axios.put(`${serverUrl}/api/admin/users/update/${id}`, userData, { withCredentials: true });
+            if (response.data.success) {
+                setUsers(users.map(u => u._id === id ? response.data.user : u));
+                toast.success('User updated successfully');
+                fetchAuditLogs();
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update user');
+        }
+    };
+
+    const deleteAdminUser = async (id) => {
+        try {
+            const response = await axios.delete(`${serverUrl}/api/admin/users/delete/${id}`, { withCredentials: true });
+            if (response.data.success) {
+                setUsers(users.filter(u => u._id !== id));
+                toast.success('User deleted successfully');
+                fetchAuditLogs();
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete user');
+        }
     };
 
     const getStatusBadge = (status) => {
@@ -217,6 +476,14 @@ export const AppProvider = ({ children }) => {
         getStatusBadge
     };
 
+    const clearNotifications = () => {
+        const now = Date.now();
+        setLastReadTime(now);
+        localStorage.setItem('lastReadAuditTime', now);
+    };
+
+    const notifications = auditLogs.filter(log => new Date(log.createdAt).getTime() > lastReadTime);
+
     const value = {
         isLoggedIn,
         user,
@@ -231,6 +498,7 @@ export const AppProvider = ({ children }) => {
         searchQuery,
         setSearchQuery,
         notifications,
+        clearNotifications,
         inventory,
         addProduct,
         deleteProduct,
@@ -246,6 +514,17 @@ export const AppProvider = ({ children }) => {
         addOrder,
         users,
         addUser,
+        updateAdminUser,
+        deleteAdminUser,
+        fetchUsers,
+        auditLogs,
+        fetchAuditLogs,
+        allRoles,
+        addRole,
+        updateRole,
+        deleteRole,
+        departments,
+        addDepartment,
         getStatusBadge,
         dashboardData
     };

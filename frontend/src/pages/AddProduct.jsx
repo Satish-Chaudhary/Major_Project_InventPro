@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Package, X, Upload, Info, Check } from 'lucide-react';
 
 import { useApp } from '../context/AppContext';
+import { serverUrl } from '../App';
 
 const AddProduct = ({ isOpen, editProduct }) => {
-    const { setShowAddModal, addProduct, updateProduct } = useApp();
+    const { setShowAddModal, addProduct, updateProduct, categories } = useApp();
     const onClose = () => setShowAddModal(false);
 
     // Internal state for form remains here as it's local to the form
@@ -18,24 +19,27 @@ const AddProduct = ({ isOpen, editProduct }) => {
         basePrice: '',
         costPrice: '',
         taxRate: '20',
-        initialQuantity: '',
-        lowStockThreshold: '10',
+        barcodeEAN: '',
+        productImage: '',
+        imageFile: null, // To store the actual file object
         status: 'in stock'
     });
 
     useEffect(() => {
         if (editProduct) {
             setFormData({
-                name: editProduct.name || '',
-                sku: editProduct.sku || '',
+                name: editProduct.productName || '',
+                sku: editProduct.skuId || '',
                 category: editProduct.category || 'Electronics',
                 brand: editProduct.brand || '',
-                description: editProduct.description || '',
-                basePrice: editProduct.price || '',
+                description: editProduct.productDescription || '',
+                basePrice: editProduct.basePrice || '',
                 costPrice: editProduct.costPrice || '',
-                taxRate: editProduct.taxRate || '20',
-                initialQuantity: editProduct.stock || '',
-                lowStockThreshold: editProduct.minStock || '10',
+                taxRate: editProduct.tax || '20',
+                initialQuantity: editProduct.initialQty || '',
+                lowStockThreshold: editProduct.lowStockThreshold || '10',
+                barcodeEAN: editProduct.barcodeEAN || '',
+                productImage: editProduct.productImage ? (editProduct.productImage.startsWith('http') ? editProduct.productImage : `${serverUrl}/${editProduct.productImage.replace('\\', '/')}`) : '',
                 status: editProduct.status || 'in stock'
             });
         } else {
@@ -50,6 +54,8 @@ const AddProduct = ({ isOpen, editProduct }) => {
                 taxRate: '20',
                 initialQuantity: '',
                 lowStockThreshold: '10',
+                barcodeEAN: '',
+                productImage: '',
                 status: 'in stock'
             });
         }
@@ -57,20 +63,36 @@ const AddProduct = ({ isOpen, editProduct }) => {
 
     if (!isOpen) return null;
 
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setFormData({
+                ...formData,
+                imageFile: file,
+                productImage: URL.createObjectURL(file) // For local preview
+            });
+        }
+    };
+
     const handleSave = () => {
         const productData = {
-            id: editProduct ? editProduct.id : Date.now(),
-            name: formData.name || 'New Product',
-            sku: formData.sku || 'SKU-' + Math.floor(Math.random() * 1000),
+            productName: formData.name,
+            productDescription: formData.description,
             category: formData.category,
-            stock: parseInt(formData.initialQuantity) || 0,
-            minStock: parseInt(formData.lowStockThreshold) || 10,
-            price: parseFloat(formData.basePrice) || 0,
+            brand: formData.brand,
+            skuId: formData.sku,
+            barcodeEAN: formData.barcodeEAN || '',
+            initialQty: formData.initialQuantity || 0,
+            lowStockThreshold: formData.lowStockThreshold || 10,
+            basePrice: formData.basePrice || 0,
+            costPrice: formData.costPrice || 0,
+            tax: formData.taxRate || 0,
+            productImage: formData.imageFile || formData.productImage, // Send file if exists, else existing URL/path
             status: formData.status
         };
 
         if (editProduct) {
-            updateProduct(productData);
+            updateProduct({ ...productData, _id: editProduct._id });
         } else {
             addProduct(productData);
         }
@@ -157,10 +179,11 @@ const AddProduct = ({ isOpen, editProduct }) => {
                                                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                                                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-all appearance-none cursor-pointer"
                                             >
-                                                <option>Electronics</option>
-                                                <option>Accessories</option>
-                                                <option>Office Supplies</option>
-                                                <option>Furniture</option>
+                                                {categories.map((cat) => (
+                                                    <option key={cat._id} value={cat.catName}>
+                                                        {cat.catName}
+                                                    </option>
+                                                ))}
                                             </select>
                                         </div>
                                         <div>
@@ -196,7 +219,13 @@ const AddProduct = ({ isOpen, editProduct }) => {
                                     </div>
                                     <div>
                                         <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Barcode / EAN</label>
-                                        <input type="text" placeholder="0000 0000 0000" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" />
+                                        <input
+                                            type="text"
+                                            value={formData.barcodeEAN}
+                                            onChange={(e) => setFormData({ ...formData, barcodeEAN: e.target.value })}
+                                            placeholder="0000 0000 0000"
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500"
+                                        />
                                     </div>
                                     <div>
                                         <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Quantity</label>
@@ -226,12 +255,31 @@ const AddProduct = ({ isOpen, editProduct }) => {
                         <div className="space-y-6">
                             <section className="bg-slate-900/30 border border-slate-800/50 rounded-2xl p-6">
                                 <h3 className="text-md font-bold text-white mb-4 tracking-tight">Product Media</h3>
-                                <div className="border-2 border-dashed border-slate-800 bg-slate-950/50 rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:border-purple-500/50 hover:bg-purple-500/5 transition-all group">
-                                    <div className="w-12 h-12 rounded-full bg-slate-800 group-hover:bg-purple-500/20 flex items-center justify-center mb-3 transition-colors">
-                                        <Upload className="w-6 h-6 text-slate-400 group-hover:text-purple-400" />
-                                    </div>
-                                    <p className="text-white text-sm font-semibold">Click to upload image</p>
-                                    <p className="text-slate-500 text-[11px] mt-1">or drag and drop<br />SVG, PNG, JPG (max. 800x800px)</p>
+                                <div className="space-y-4">
+                                    <label className="border-2 border-dashed border-slate-800 bg-slate-950/50 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:border-purple-500/50 hover:bg-purple-500/5 transition-all group overflow-hidden relative min-h-[160px]">
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            accept="image/*"
+                                            onChange={handleFileChange}
+                                        />
+                                        {formData.productImage ? (
+                                            <div className="relative w-full h-full flex items-center justify-center">
+                                                <img src={formData.productImage} alt="Product" className="w-full h-full object-contain max-h-[140px]" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <p className="text-white text-xs font-bold">Change Image</p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="w-12 h-12 rounded-full bg-slate-800 group-hover:bg-purple-500/20 flex items-center justify-center mb-3 transition-colors">
+                                                    <Upload className="w-6 h-6 text-slate-400 group-hover:text-purple-400" />
+                                                </div>
+                                                <p className="text-white text-sm font-semibold">Click to upload from system</p>
+                                                <p className="text-slate-500 text-[10px] mt-1">SVG, PNG, JPG (max. 5MB)</p>
+                                            </>
+                                        )}
+                                    </label>
                                 </div>
                             </section>
 
@@ -263,7 +311,12 @@ const AddProduct = ({ isOpen, editProduct }) => {
                                     </div>
                                     <div>
                                         <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Tax Rate (%)</label>
-                                        <input type="number" defaultValue="20" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 tabular-nums" />
+                                        <input
+                                            type="number"
+                                            value={formData.taxRate}
+                                            onChange={(e) => setFormData({ ...formData, taxRate: e.target.value })}
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 tabular-nums"
+                                        />
                                     </div>
                                 </div>
                             </section>

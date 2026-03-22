@@ -8,53 +8,63 @@ import { clsx } from 'clsx';
 
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { serverUrl } from '../App';
 
 const AddCategory = ({ isOpen = true }) => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { addCategory, updateCategory } = useApp();
+    const { addCategory, updateCategory, categories } = useApp();
     const onClose = () => navigate('/categories');
 
     // Check if we are in edit mode based on state passed via navigation
     const editCategory = location.state?.editCategory;
 
     const [formData, setFormData] = useState({
-        name: '',
-        slug: '',
+        catName: '',
         description: '',
         status: 'active',
-        parent: 'none'
+        parent: '',
+        thumbnail: '',
+        imageFile: null
     });
 
     useEffect(() => {
         if (editCategory) {
             setFormData({
-                name: editCategory.name || '',
-                slug: editCategory.name?.toLowerCase().replace(/ /g, '-') || '',
+                catName: editCategory.catName || '',
                 description: editCategory.description || '',
                 status: editCategory.status || 'active',
-                parent: editCategory.parent || 'none'
+                parent: editCategory.parent?._id || editCategory.parent || '',
+                thumbnail: editCategory.thumbnail ? (editCategory.thumbnail.startsWith('http') ? editCategory.thumbnail : `${serverUrl}/${editCategory.thumbnail.replace('\\', '/')}`) : '',
+                imageFile: null
             });
         }
     }, [editCategory]);
 
     if (!isOpen) return null;
 
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setFormData({
+                ...formData,
+                imageFile: file,
+                thumbnail: URL.createObjectURL(file)
+            });
+        }
+    };
+
     const handleSave = () => {
         const categoryData = {
-            id: editCategory ? editCategory.id : Date.now(),
-            name: formData.name || 'New Category',
-            count: editCategory ? editCategory.count : 0,
-            stockValue: editCategory ? editCategory.stockValue : '$0',
-            trend: editCategory ? editCategory.trend : '+0%',
-            color: editCategory ? editCategory.color : 'from-purple-500 to-indigo-500',
-            status: formData.status,
+            catName: formData.catName,
             description: formData.description,
-            parent: formData.parent
+            status: formData.status,
+            parent: formData.parent === '' ? null : formData.parent,
+            thumbnail: formData.imageFile || formData.thumbnail
         };
 
         if (editCategory) {
-            updateCategory(categoryData);
+            updateCategory({ ...categoryData, _id: editCategory._id });
         } else {
             addCategory(categoryData);
         }
@@ -117,6 +127,8 @@ const AddCategory = ({ isOpen = true }) => {
                                         <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Category Name</label>
                                         <input
                                             type="text"
+                                            value={formData.catName}
+                                            onChange={(e) => setFormData({ ...formData, catName: e.target.value })}
                                             placeholder="e.g. Electronics"
                                             className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none focus:border-purple-500/50 transition-all focus:ring-4 focus:ring-purple-500/5"
                                         />
@@ -142,6 +154,8 @@ const AddCategory = ({ isOpen = true }) => {
                                         <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Description</label>
                                         <textarea
                                             rows="6"
+                                            value={formData.description}
+                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                             placeholder="Type category description here..."
                                             className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none focus:border-purple-500/50 transition-all focus:ring-4 focus:ring-purple-500/5 resize-none"
                                         />
@@ -203,21 +217,37 @@ const AddCategory = ({ isOpen = true }) => {
                                         value={formData.parent}
                                         onChange={(e) => setFormData({ ...formData, parent: e.target.value })}
                                     >
-                                        <option value="none">None (Top Level)</option>
-                                        <option value="electronics">Electronics</option>
-                                        <option value="office">Office Supplies</option>
+                                        <option value="">None (Top Level)</option>
+                                        {categories.filter(c => c._id !== editCategory?._id).map((cat) => (
+                                            <option key={cat._id} value={cat._id}>
+                                                {cat.catName}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
                             </section>
 
                             <section className="bg-slate-900/40 border border-slate-800/60 rounded-4xl p-8 space-y-6">
                                 <h3 className="text-lg font-bold text-white tracking-tight leading-none">Thumbnail</h3>
-                                <div className="group relative border-2 border-dashed border-slate-800 bg-slate-950/20 rounded-3xl p-10 flex flex-col items-center justify-center text-center cursor-pointer hover:border-purple-500/50 hover:bg-purple-500/5 transition-all">                                    <div className="w-14 h-14 rounded-2xl bg-slate-800/50 group-hover:bg-purple-500/20 flex items-center justify-center mb-4 transition-all">
-                                    <Upload className="w-7 h-7 text-slate-500 group-hover:text-purple-400" />
-                                </div>
-                                    <p className="text-white text-sm font-bold tracking-tight">Click to upload image</p>
-                                    <p className="text-slate-600 text-[10px] font-bold uppercase tracking-widest mt-2 leading-tight">SVG, PNG, JPG or GIF (max. 2MB)</p>
-                                </div>
+                                <label className="group relative border-2 border-dashed border-slate-800 bg-slate-950/20 rounded-3xl p-10 flex flex-col items-center justify-center text-center cursor-pointer hover:border-purple-500/50 hover:bg-purple-500/5 transition-all overflow-hidden min-h-[160px]">
+                                    <input
+                                        type="file"
+                                        className="hidden"
+                                        accept="image/*"
+                                        onChange={handleFileChange}
+                                    />
+                                    {formData.thumbnail ? (
+                                        <img src={formData.thumbnail} alt="Thumbnail" className="w-full h-full object-contain max-h-[120px]" />
+                                    ) : (
+                                        <>
+                                            <div className="w-14 h-14 rounded-2xl bg-slate-800/50 group-hover:bg-purple-500/20 flex items-center justify-center mb-4 transition-all">
+                                                <Upload className="w-7 h-7 text-slate-500 group-hover:text-purple-400" />
+                                            </div>
+                                            <p className="text-white text-sm font-bold tracking-tight">Click to upload image</p>
+                                            <p className="text-slate-600 text-[10px] font-bold uppercase tracking-widest mt-2 leading-tight">SVG, PNG, JPG or GIF (max. 2MB)</p>
+                                        </>
+                                    )}
+                                </label>
                             </section>
                         </div>
                     </div>

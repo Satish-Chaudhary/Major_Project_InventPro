@@ -1,126 +1,150 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import {
-    Users, ShieldCheck, Settings,
-    Lock, Key, Shield, Trash2, Edit3,
-    Plus, Search, Filter, CheckCircle2,
-    XCircle, AlertCircle, ChevronRight
+    Shield, ShieldCheck, ShieldAlert, Lock,
+    Key, Users, UserPlus, Search,
+    Edit2, Trash2, Plus, ArrowRight,
+    Server, Activity, Globe, Zap,
+    Settings, Package, MoreVertical, FolderPlus
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
 import { clsx } from 'clsx';
-
 const AdminRoles = () => {
-    const [roles, setRoles] = useState([
-        { id: 1, name: 'Admin', users: 2, permissions: ['Full Access'], level: 'Critical', color: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
-        { id: 2, name: 'Manager', users: 5, permissions: ['Product Management', 'Reports', 'Orders'], level: 'High', color: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' },
-        { id: 3, name: 'Warehouse Staff', users: 12, permissions: ['Update Stock', 'View Inventory'], level: 'Medium', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-        { id: 4, name: 'Sales Staff', users: 8, permissions: ['Sales Entry', 'View Orders'], level: 'Medium', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-        { id: 5, name: 'Accountant', users: 3, permissions: ['Revenue Reports', 'Supplier Invoices'], level: 'High', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
-    ]);
+    const navigate = useNavigate();
+    const { allRoles, deleteRole } = useApp();
+    const [searchQuery, setSearchQuery] = useState('');
+    const [activeMenu, setActiveMenu] = useState(null);
 
-    const permissionsList = [
-        'create_product', 'edit_product', 'delete_product',
-        'update_stock', 'manage_users', 'view_reports',
-        'manage_roles', 'manage_suppliers', 'manage_orders'
-    ];
+    const handleDelete = (id) => {
+        if (window.confirm('Are you sure you want to delete this role?')) {
+            deleteRole(id);
+            setActiveMenu(null);
+        }
+    };
+
+    const filteredRoles = allRoles.filter(role =>
+        role.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-700">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="p-6 space-y-8"
+        >
+            {/* Header - Matching Categories.jsx */}
+            <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-3">
-                        <div className="p-2 bg-purple-500/10 rounded-xl border border-purple-500/20">
-                            <Shield className="w-6 h-6 text-purple-400" />
-                        </div>
-                        ROLE MANAGEMENT
-                    </h1>
-                    <p className="text-slate-500 mt-1 font-medium italic underline underline-offset-4 decoration-purple-500/30">Define system access levels and permissions.</p>
+                    <h2 className="text-2xl font-bold text-white tracking-tight">Security Roles</h2>
+                    <p className="text-slate-400 text-sm mt-1">Manage system-wide permissions and clearance archetypes.</p>
                 </div>
-
-                <button className="px-5 py-2.5 bg-linear-to-r from-purple-600 to-cyan-600 text-white rounded-xl text-sm font-black uppercase tracking-widest shadow-lg shadow-purple-500/20 hover:brightness-110 active:scale-95 transition-all flex items-center gap-2">
-                    <Plus className="w-5 h-5" /> CREATE NEW ROLE
+                <button
+                    onClick={() => navigate('/add-role')}
+                    className="flex items-center gap-2 bg-linear-to-r from-purple-600 to-cyan-600 text-white px-5 py-2.5 rounded-xl hover:brightness-110 transition-all font-bold text-sm shadow-lg shadow-purple-500/20"
+                >
+                    <FolderPlus className="w-4 h-4" />
+                    Deploy New Role
                 </button>
             </div>
 
-            {/* Roles Grid */}
+            {/* Grid - Matching Categories.jsx */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {roles.map((role, idx) => (
+                {filteredRoles.map((role, index) => (
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: idx * 0.1 }}
-                        key={role.id}
-                        className="bg-[#0a0a0a] border border-slate-800 rounded-3xl p-6 flex flex-col group hover:border-slate-700 transition-all shadow-xl"
+                        key={role._id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="group bg-slate-900/40 border border-slate-800 rounded-2xl p-6 hover:border-purple-500/30 transition-all cursor-pointer relative overflow-hidden"
                     >
-                        <div className="flex items-center justify-between mb-6">
-                            <div className={clsx("px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-widest", role.color)}>
-                                {role.name}
+                        <div className="absolute -right-8 -top-8 w-32 h-32 bg-purple-500/5 rounded-full blur-3xl group-hover:bg-purple-500/10 transition-all"></div>
+
+                        <div className="flex justify-between items-start mb-6">
+                            <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center border border-slate-700/50 group-hover:scale-110 transition-transform shadow-lg shadow-black/20">
+                                <Shield className="w-6 h-6 text-purple-400" />
                             </div>
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors">
-                                    <Edit3 className="w-4 h-4" />
+                            <div className="relative">
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveMenu(activeMenu === role._id ? null : role._id);
+                                    }}
+                                    className="p-2 text-slate-500 hover:text-white transition-colors"
+                                >
+                                    <MoreVertical className="w-5 h-5" />
                                 </button>
-                                <button className="p-2 hover:bg-red-500/10 rounded-lg text-slate-600 hover:text-red-400 transition-colors">
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
+                                {activeMenu === role._id && (
+                                    <motion.div 
+                                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        className="absolute right-0 mt-2 w-48 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-20 py-2"
+                                    >
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                navigate('/add-role', { state: { editRole: role } });
+                                            }}
+                                            className="w-full flex items-center gap-3 px-4 py-2.5 text-slate-300 hover:bg-slate-800 hover:text-white transition-all text-xs font-bold"
+                                        >
+                                            <Edit2 className="w-4 h-4 text-cyan-400" />
+                                            Edit Architecture
+                                        </button>
+                                        <div className="h-px bg-slate-800 my-1 mx-2"></div>
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDelete(role._id);
+                                            }}
+                                            className="w-full flex items-center gap-3 px-4 py-2.5 text-red-400 hover:bg-red-500/10 transition-all text-xs font-bold"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                            Decommission
+                                        </button>
+                                    </motion.div>
+                                )}
                             </div>
                         </div>
 
-                        <div className="space-y-4 flex-1">
-                            <div className="flex items-center gap-3">
-                                <Users className="w-4 h-4 text-slate-500" />
-                                <span className="text-xs text-slate-400 font-bold uppercase">{role.users} Active Users</span>
-                            </div>
+                        <h3 className="text-xl font-bold text-white tracking-tight">{role.name}</h3>
+                        <p className="text-slate-500 text-xs mt-2 line-clamp-2 h-8">{role.description || 'No description provided.'}</p>
 
-                            <div className="space-y-2">
-                                <p className="text-[10px] text-slate-600 font-black uppercase tracking-[0.15em]">CORE PERMISSIONS</p>
-                                <div className="flex flex-wrap gap-2">
-                                    {role.permissions.map((p, i) => (
-                                        <span key={i} className="px-2 py-1 bg-slate-900 border border-slate-800 rounded-lg text-[10px] text-slate-300 font-bold">
-                                            {p}
-                                        </span>
-                                    ))}
-                                </div>
+                        <div className="flex items-center gap-4 mt-6">
+                            <div>
+                                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest leading-none">Permissions</p>
+                                <p className="text-white font-bold text-lg">{role.permissions.length}</p>
                             </div>
-                        </div>
-
-                        <div className="mt-6 pt-4 border-t border-slate-800/50 flex items-center justify-between">
-                            <div className="flex items-center gap-1.5">
-                                <div className={clsx("w-1.5 h-1.5 rounded-full animate-pulse",
-                                    role.level === 'Critical' ? 'bg-red-500' :
-                                        role.level === 'High' ? 'bg-amber-500' : 'bg-emerald-500'
-                                )} />
-                                <span className="text-[10px] text-slate-500 font-bold uppercase">{role.level} Level Security</span>
+                            <div className="w-px h-8 bg-slate-800" />
+                            <div>
+                                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest leading-none">Security Level</p>
+                                <p className="text-purple-400 font-bold text-lg">High</p>
                             </div>
-                            <button className="text-[10px] text-purple-400 font-black uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1">
-                                View Details <ChevronRight className="w-3 h-3" />
-                            </button>
                         </div>
                     </motion.div>
                 ))}
             </div>
 
-            {/* Permission Matrix Preview */}
-            <div className="bg-[#0a0a0a] border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
-                <div className="p-6 border-b border-slate-800 bg-slate-900/20">
-                    <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-                        <Key className="w-4 h-4 text-amber-400" />
-                        PERMISSION MASTER LIST
-                    </h3>
-                </div>
-
-                <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {permissionsList.map((perm, idx) => (
-                        <div key={idx} className="flex items-center gap-3 p-3 bg-slate-900/40 rounded-2xl border border-slate-800 group hover:border-cyan-500/30 transition-all cursor-default">
-                            <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
-                                <CheckCircle2 className="w-4 h-4 text-cyan-400" />
-                            </div>
-                            <span className="text-xs text-slate-300 font-bold tracking-tight">{perm.replace('_', ' ').toUpperCase()}</span>
+            {/* Extra Section: Security Hardening (Integrated into the matching layout) */}
+            <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 mt-8">
+                <h3 className="text-white font-bold text-lg tracking-tight flex items-center gap-2">
+                    <ShieldAlert className="w-5 h-5 text-purple-400" />
+                    Security Baseline
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+                    {[
+                        { label: 'Global MFA', value: 'Enforced', color: 'text-emerald-400' },
+                        { label: 'Session Timeout', value: '15m', color: 'text-purple-400' },
+                        { label: 'IP Whitelisting', value: 'Active', color: 'text-cyan-400' },
+                        { label: 'Audit Logging', value: '90 Days', color: 'text-amber-400' },
+                    ].map((item, i) => (
+                        <div key={i} className="p-4 bg-slate-800/20 rounded-xl border border-transparent hover:border-slate-700/50 transition-all">
+                            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">{item.label}</p>
+                            <p className={clsx("text-sm font-bold mt-1", item.color)}>{item.value}</p>
                         </div>
                     ))}
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 };
 

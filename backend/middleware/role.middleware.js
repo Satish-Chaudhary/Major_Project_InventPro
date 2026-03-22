@@ -7,6 +7,11 @@ export const authorize = (allowedRoles) => {
             });
         }
 
+        // 'root' role has bypass permission for all role-restricted actions
+        if (req.user.role === 'root') {
+            return next();
+        }
+
         if (!allowedRoles.includes(req.user.role)) {
             return res.status(403).json({
                 success: false,

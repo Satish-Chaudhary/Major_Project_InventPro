@@ -1,7 +1,7 @@
 import React from 'react';
 import {
     LayoutDashboard, Package, TrendingUp, Users,
-    Settings, BarChart3, ArrowUpDown, LogOut, ShieldCheck
+    Settings, BarChart3, ArrowUpDown, LogOut, ShieldCheck, History
 } from 'lucide-react';
 import SideNavHeader from './SideNavHeader.jsx';
 import SideNavLinks from './SideNavLinks.jsx';
@@ -11,23 +11,24 @@ import { useApp } from '../../context/AppContext';
 
 const Sidebar = () => {
     const { activeTab, setActiveTab, logout, user } = useApp();
-    
+
     const rolePermissions = {
-        'admin': ['dashboard', 'admin-dashboard', 'inventory', 'approvals', 'users', 'roles', 'categories', 'orders', 'suppliers', 'analytics', 'reports', 'settings'],
-        'manager': ['dashboard', 'inventory', 'categories', 'orders', 'suppliers', 'analytics', 'reports'],
-        'warehouse staff': ['dashboard', 'inventory', 'categories'],
-        'sales staff': ['dashboard', 'inventory', 'orders'],
-        'accountant': ['dashboard', 'inventory', 'suppliers', 'analytics', 'reports'],
+        'admin': ['dashboard', 'admin-dashboard', 'inventory', 'approvals', 'users', 'roles', 'categories', 'orders', 'suppliers', 'analytics', 'reports', 'settings', 'audit'],
+        'manager': ['dashboard', 'inventory', 'categories', 'orders', 'suppliers', 'analytics', 'reports', 'audit'],
+        'warehouse staff': ['dashboard', 'inventory', 'categories', 'audit'],
+        'sales staff': ['dashboard', 'inventory', 'orders', 'audit'],
+        'accountant': ['dashboard', 'inventory', 'suppliers', 'analytics', 'reports', 'audit'],
     };
 
     const menuItems = [
         { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
         { id: 'admin-dashboard', icon: ShieldCheck, label: 'Admin Panel', roles: ['admin'] },
-        { id: 'inventory', icon: Package, label: 'Products & Inventory' },
+        { id: 'inventory', icon: Package, label: 'Inventory' },
         { id: 'approvals', icon: ShieldCheck, label: 'Staff Requests', roles: ['admin'] },
         { id: 'users', icon: Users, label: 'User Database', roles: ['admin'] },
         { id: 'roles', icon: ShieldCheck, label: 'Roles & Security', roles: ['admin'] },
         { id: 'categories', icon: Package, label: 'Item Categories', roles: ['admin', 'manager', 'warehouse staff'] },
+        { id: 'audit', icon: History, label: 'Audit Logs' },
         { id: 'orders', icon: ArrowUpDown, label: 'Sales & Orders', roles: ['admin', 'manager', 'sales staff'] },
         { id: 'suppliers', icon: Users, label: 'Vendor Registry', roles: ['admin', 'manager', 'accountant'] },
         { id: 'analytics', icon: BarChart3, label: 'System Analytics', roles: ['admin', 'manager', 'accountant'] },

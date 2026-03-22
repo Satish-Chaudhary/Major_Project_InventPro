@@ -3,7 +3,8 @@ import { generateToken } from '../config/token.js';
 import User from '../models/auth.model.js';
 import AccessRequest from '../models/accessRequest.model.js';
 import bcrypt from 'bcryptjs';
-import { sendAccessRequestEmail, sendApprovalEmail } from '../utils/email.utils.js';
+import { sendAccessRequestEmail, sendApprovalEmail, sendRejectionEmail } from '../utils/email.utils.js';
+import { logActivity } from '../utils/logger.utils.js';
 
 // Admin Registration Controller (Max 2 Admins)
 export const adminRegister = async (req, res) => {
@@ -53,6 +54,10 @@ export const adminRegister = async (req, res) => {
             role: 'admin',
             status: 'active' // Admins are active by default
         });
+
+        // Log activity (Manual ID as req.user is not yet available during first registration)
+        const sysUser = await User.findOne({ email });
+        if (sysUser) await logActivity(sysUser._id, `New Administrator Registered: ${fullName}`, 'auth', { email }, req.ip);
 
         return res.status(201).json({
             success: true,
@@ -112,6 +117,9 @@ export const requestAccess = async (req, res) => {
             status: 'pending'
         });
 
+        // Log activity
+        await logActivity(user._id, `Access Request Submitted: ${fullName}`, 'auth', { role: user.role }, req.ip);
+
         // Send confirmation emails to user and admin
         await sendAccessRequestEmail(email, fullName, user.role);
 
@@ -154,14 +162,21 @@ export const logIn = async (req, res) => {
         if (user.status === 'pending') {
             return res.status(403).json({
                 success: false,
-                message: "Your account is pending approval."
+                message: "Approval Pending"
+            })
+        }
+
+        if (user.status === 'inactive') {
+            return res.status(403).json({
+                success: false,
+                message: "Account Inactive"
             })
         }
 
         if (user.status === 'rejected') {
             return res.status(403).json({
                 success: false,
-                message: "Your account request has been rejected."
+                message: "Request Denied"
             })
         }
 
@@ -172,6 +187,9 @@ export const logIn = async (req, res) => {
             secure: false,
             sameSite: "Strict"
         })
+
+        // Log activity
+        await logActivity(user._id, `User logged in`, 'auth', {}, req.ip);
 
         return res.status(200).json({
             success: true,
@@ -210,6 +228,11 @@ export const getMe = async (req, res) => {
 
 export const logout = async (req, res) => {
     try {
+        // Log activity
+        if (req.user) {
+            await logActivity(req.user._id, `User logged out`, 'auth', {}, req.ip);
+        }
+
         res.clearCookie("token");
         return res.status(200).json({
             success: true,
@@ -241,9 +264,18 @@ export const sendOtp = async (req, res) => {
             })
         }
 
+        // Implement cooling period (don't send more than once every 2 minutes)
+        if (user.otpExpires && (user.otpExpires - Date.now() > 3 * 60 * 1000)) {
+            return res.status(429).json({
+                success: false,
+                message: "Please wait before requesting another OTP"
+            });
+        }
+
         const otp = Math.floor(1000 + Math.random() * 9000).toString();
         user.resetOtp = otp;
         user.otpExpires = Date.now() + 5 * 60 * 1000;
+        user.otpAttempts = 0; // Reset attempts
 
         await user.save();
         await sendMail(email, otp);
@@ -267,19 +299,35 @@ export const sendOtp = async (req, res) => {
 export const verifyOtp = async (req, res) => {
     try {
         const { email, otp } = req.body;
-
         const user = await User.findOne({ email });
 
-        if (!user || user.resetOtp !== otp || user.otpExpires < Date.now()) {
+        if (!user || user.otpExpires < Date.now()) {
             return res.status(400).json({
                 success: false,
-                message: "Invalid or Expire Otp"
+                message: "OTP Expired"
+            })
+        }
+
+        if (user.otpAttempts >= 3) {
+            return res.status(403).json({
+                success: false,
+                message: "Too many attempts. Request a new OTP."
+            });
+        }
+
+        if (user.resetOtp !== otp) {
+            user.otpAttempts = (user.otpAttempts || 0) + 1;
+            await user.save();
+            return res.status(400).json({
+                success: false,
+                message: "Invalid OTP"
             })
         }
 
         user.isOtpVerified = true;
         user.resetOtp = undefined;
         user.otpExpires = undefined;
+        user.otpAttempts = 0;
 
         await user.save();
         return res.status(200).json({
@@ -300,13 +348,21 @@ export const verifyOtp = async (req, res) => {
 // Forgot Password - Reset Password Controller
 export const resetPassword = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, confirmPassword } = req.body;
+        
+        if (password !== confirmPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "Passwords Don't Match"
+            });
+        }
+
         const user = await User.findOne({ email });
 
         if (!user || !user.isOtpVerified) {
             return res.status(400).json({
                 success: false,
-                message: "Otp Verification is required"
+                message: "OTP Verification is required"
             })
         }
 
@@ -316,6 +372,9 @@ export const resetPassword = async (req, res) => {
         user.isOtpVerified = false;
 
         await user.save();
+
+        // Log activity
+        await logActivity(user._id, `Password reset successfully`, 'auth', {}, req.ip);
 
         return res.status(200).json({
             success: true,
@@ -350,18 +409,34 @@ export const getPendingRequests = async (req, res) => {
 export const approveRequest = async (req, res) => {
     try {
         const { id } = req.params;
-        const user = await User.findByIdAndUpdate(id, { status: 'active' }, { new: true });
+        const { assignedRole, adminNotes } = req.body;
+
+        const user = await User.findById(id);
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
+        // Update User info
+        user.status = 'active';
+        if (assignedRole) {
+            user.role = assignedRole;
+        }
+        await user.save();
+
         // Sync AccessRequest status
-        await AccessRequest.findOneAndUpdate({ email: user.email }, { status: 'approved' });
+        await AccessRequest.findOneAndUpdate(
+            { email: user.email }, 
+            { status: 'approved', adminNotes: adminNotes },
+            { new: true }
+        );
 
         // Send Approval Email
         await sendApprovalEmail(user.email, user.fullName);
 
+        // Log activity - Admin approving the request
+        await logActivity(req.user._id, `Approved access request for: ${user.fullName}`, 'auth', { targetUserId: user._id, role: user.role }, req.ip);
+
         return res.status(200).json({
             success: true,
-            message: `User ${user.fullName} approved successfully.`
+            message: `User ${user.fullName} approved successfully as ${user.role}.`
         });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
@@ -372,11 +447,18 @@ export const approveRequest = async (req, res) => {
 export const rejectRequest = async (req, res) => {
     try {
         const { id } = req.params;
+        const { reason } = req.body;
         const user = await User.findByIdAndUpdate(id, { status: 'rejected' }, { new: true });
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
         // Sync AccessRequest status
         await AccessRequest.findOneAndUpdate({ email: user.email }, { status: 'rejected' });
+
+        // Send Rejection Email
+        await sendRejectionEmail(user.email, user.fullName, reason);
+
+        // Log activity - Admin rejecting the request
+        await logActivity(req.user._id, `Rejected access request for: ${user.fullName}`, 'auth', { targetUserId: user._id, reason }, req.ip);
 
         return res.status(200).json({
             success: true,
@@ -387,3 +469,34 @@ export const rejectRequest = async (req, res) => {
     }
 };
 
+
+// Update Current User Profile
+export const updateMe = async (req, res) => {
+    try {
+        const { fullName, phone } = req.body;
+        const user = await User.findById(req.user._id);
+        if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+        if (fullName) user.fullName = fullName;
+        if (phone) user.phone = phone;
+
+        await user.save();
+
+        // Log activity
+        await logActivity(user._id, `Updated profile information`, 'users', { updatedFields: req.body }, req.ip);
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile updated successfully",
+            user: {
+                id: user._id,
+                fullName: user.fullName,
+                email: user.email,
+                phone: user.phone,
+                role: user.role
+            }
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};

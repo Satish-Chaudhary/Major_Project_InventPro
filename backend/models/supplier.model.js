@@ -6,7 +6,7 @@ const SupplierSchema = new mongoose.Schema({
     contact: { type: String },
     email: { type: String },
     phone: { type: String },
-    categories: [{ type: String }],
+    categories: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Category' }],
     status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
     reliability: { type: Number, default: 100 },
     location: { type: String }

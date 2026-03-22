@@ -152,3 +152,42 @@ export const sendApprovalEmail = async (userEmail, userName, tempPassword = null
         return false;
     }
 };
+export const sendRejectionEmail = async (userEmail, userName, reason = null) => {
+    const adminEmail = process.env.EMAIL;
+    
+    const mailOptions = {
+        from: `InventPro Admin <${process.env.EMAIL}>`,
+        to: userEmail,
+        subject: 'Access Request Denied - InventPro',
+        html: `
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px; background-color: #f9f9f9;">
+                <h2 style="color: #ef4444; border-bottom: 2px solid #ef4444; padding-bottom: 10px;">Request Denied</h2>
+                <p>Hello <strong>${userName}</strong>,</p>
+                <p>Thank you for your interest in <strong>InventPro</strong>.</p>
+                <p>After reviewing your access request, we regret to inform you that your application has been <strong>denied</strong> at this time.</p>
+                
+                ${reason ? `
+                <div style="background-color: #fef2f2; padding: 15px; border-radius: 8px; border-left: 5px solid #ef4444; margin: 20px 0;">
+                    <p style="margin: 0; color: #b91c1c; font-weight: bold;">"Reason: ${reason}"</p>
+                </div>
+                ` : ''}
+                
+                <p>If you believe this was in error, you can contact the administrator at:</p>
+                <p style="background-color: #f3f4f6; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 16px; color: #1f2937;">${adminEmail}</p>
+                
+                <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #9ca3af; text-align: center;">
+                    <p>This is an automated message from InventPro. Please do not reply to this email.</p>
+                </div>
+            </div>
+        `
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log(`Rejection email sent to: ${userEmail}`);
+        return true;
+    } catch (error) {
+        console.error('Error sending rejection email:', error);
+        return false;
+    }
+};

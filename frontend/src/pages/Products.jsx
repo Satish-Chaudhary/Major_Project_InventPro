@@ -4,6 +4,7 @@ import { Search, Plus, Download, Edit2, Trash2, Package, Check, RotateCcw } from
 import { clsx } from 'clsx';
 
 import { useApp } from '../context/AppContext';
+import { serverUrl } from '../App';
 import AddProduct from './AddProduct';
 
 const ProductsList = () => {
@@ -21,9 +22,9 @@ const ProductsList = () => {
     const [filterStatus, setFilterStatus] = useState('All');
 
     const filteredInventory = inventory.filter(item => {
-        const matchesSearch = item.name.toLowerCase().includes(localSearch.toLowerCase()) ||
-            item.sku.toLowerCase().includes(localSearch.toLowerCase()) ||
-            item.category.toLowerCase().includes(localSearch.toLowerCase());
+        const matchesSearch = (item.productName || '').toLowerCase().includes(localSearch.toLowerCase()) ||
+            (item.skuId || '').toLowerCase().includes(localSearch.toLowerCase()) ||
+            (typeof item.category === 'string' ? item.category : '').toLowerCase().includes(localSearch.toLowerCase());
 
         // Normalize status strings for comparison (remove hyphens and spaces)
         const normalize = (str) => str?.toLowerCase().replace(/[- ]/g, '') || '';
@@ -32,7 +33,7 @@ const ProductsList = () => {
         const matchesCategory = filterCategory === 'All' ||
             (Array.isArray(item.category)
                 ? item.category.some(cat => cat.trim().toLowerCase() === filterCategory.toLowerCase())
-                : item.category.toLowerCase() === filterCategory.toLowerCase());
+                : (typeof item.category === 'string' ? item.category.toLowerCase() === filterCategory.toLowerCase() : false));
 
         const matchesStatus = filterStatus === 'All' || normalize(item.status) === normalize(filterStatus);
 
@@ -49,7 +50,7 @@ const ProductsList = () => {
         if (selectedItems.length === filteredInventory.length) {
             setSelectedItems([]);
         } else {
-            setSelectedItems(filteredInventory.map(item => item.id));
+            setSelectedItems(filteredInventory.map(item => item._id));
         }
     };
 
@@ -201,44 +202,52 @@ const ProductsList = () => {
                         <tbody className="divide-y divide-slate-800">
                             {filteredInventory.map((item, index) => (
                                 <motion.tr
-                                    key={item.id}
+                                    key={item._id}
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     transition={{ delay: index * 0.03 }}
                                     className={clsx(
                                         "hover:bg-slate-800/30 transition-all group",
-                                        selectedItems.includes(item.id) && "bg-purple-500/5"
+                                        selectedItems.includes(item._id) && "bg-purple-500/5"
                                     )}
                                 >
                                     <td className="px-6 py-5">
                                         <div className="flex items-center justify-center">
                                             <input
                                                 type="checkbox"
-                                                checked={selectedItems.includes(item.id)}
-                                                onChange={() => toggleSelectItem(item.id)}
+                                                checked={selectedItems.includes(item._id)}
+                                                onChange={() => toggleSelectItem(item._id)}
                                                 className="w-4 h-4 rounded border-slate-700 bg-slate-900 accent-purple-500 cursor-pointer"
                                             />
                                         </div>
                                     </td>
                                     <td className="px-6 py-5">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 bg-linear-to-br from-slate-700/50 to-slate-800/50 rounded-xl flex items-center justify-center border border-slate-700/50 group-hover:scale-105 transition-transform shrink-0">
-                                                <Package className="w-5 h-5 text-slate-400 group-hover:text-purple-400 transition-colors" />
-                                            </div>
+                                         <div className="w-10 h-10 bg-linear-to-br from-slate-700/50 to-slate-800/50 rounded-xl flex items-center justify-center border border-slate-700/50 group-hover:scale-105 transition-transform shrink-0 overflow-hidden">
+                                             {item.productImage ? (
+                                                 <img 
+                                                     src={item.productImage.startsWith('http') ? item.productImage : `${serverUrl}/${item.productImage.replace('\\', '/')}`} 
+                                                     alt={item.productName} 
+                                                     className="w-full h-full object-cover" 
+                                                 />
+                                             ) : (
+                                                 <Package className="w-5 h-5 text-slate-400 group-hover:text-purple-400 transition-colors" />
+                                             )}
+                                         </div>
                                             <div className="min-w-0">
-                                                <p className="text-white font-bold text-sm tracking-tight truncate">{item.name}</p>
+                                                <p className="text-white font-bold text-sm tracking-tight truncate">{item.productName}</p>
                                                 <p className="text-slate-500 text-[10px] mt-0.5 font-bold uppercase tracking-wider">InvenPro Global</p>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-5 font-mono text-[10px] text-slate-500 font-bold">{item.sku}</td>
+                                    <td className="px-6 py-5 font-mono text-[10px] text-slate-500 font-bold">{item.skuId}</td>
                                     <td className="px-6 py-5">
                                         <span className="text-[11px] font-bold text-slate-400 bg-slate-800/50 px-2 py-1 rounded-md border border-slate-700/50 leading-none">
-                                            {item.category}
+                                            {typeof item.category === 'string' ? item.category : 'General'}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-5 text-sm text-white font-bold tabular-nums">{item.stock}</td>
-                                    <td className="px-6 py-5 text-sm text-white font-bold tabular-nums">${item.price.toLocaleString()}</td>
+                                    <td className="px-6 py-5 text-sm text-white font-bold tabular-nums">{item.initialQty}</td>
+                                    <td className="px-6 py-5 text-sm text-white font-bold tabular-nums">${item.basePrice?.toLocaleString()}</td>
                                     <td className="px-6 py-5">{getStatusBadge(item.status)}</td>
                                     <td className="px-6 py-5 text-right">
                                         <div className="flex items-center justify-end gap-1.5">
@@ -251,7 +260,7 @@ const ProductsList = () => {
                                             </button>
                                             {canDelete && (
                                                 <button
-                                                    onClick={() => handleDelete(item.id)}
+                                                    onClick={() => handleDelete(item._id)}
                                                     className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
                                                     title="Delete Product"
                                                 >

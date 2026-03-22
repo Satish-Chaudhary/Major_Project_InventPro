@@ -22,12 +22,12 @@ const UserSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['admin', 'manager', 'accountant', 'staff', 'warehouse staff', 'sales staff'],
+        enum: ['root', 'admin', 'manager', 'accountant', 'staff', 'warehouse staff', 'sales staff'],
         default: 'staff'
     },
     status: {
         type: String,
-        enum: ['pending', 'active', 'rejected'],
+        enum: ['pending', 'active', 'inactive', 'rejected'],
         default: 'pending'
     },
     resetOtp: {
@@ -39,6 +39,10 @@ const UserSchema = new mongoose.Schema({
     isOtpVerified: {
         type: Boolean,
         default: false
+    },
+    otpAttempts: {
+        type: Number,
+        default: 0
     }
 
 }, { timestamps: true })

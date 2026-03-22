@@ -6,136 +6,274 @@ This document outlines the user flow and connectivity of pages within the Invent
 
 ```mermaid
 graph TD
-    %% Entry Point
-    Start((Start)) --> Login[Login Page]
-
-    %% Authentication Flow
-    subgraph Auth [Authentication]
-        Login -->|Forgot Password| Reset[Reset Password]
-        Login -->|No Account| Request[Request Access]
-        Reset -->|Back| Login
-        Request -->|Submit| Pending[Pending Approval Screen]
-        Pending -->|Back| Login
-        Login -->|Login Success| Dashboard[Dashboard]
+    %% Start Node
+    Start((Start)) --> LoginPage[Login Page]
+    
+    %% Authentication Flow with Decision Points
+    subgraph Auth_Flow [Authentication Workflow]
+        LoginPage --> EnterCred[Enter Credentials]
+        EnterCred --> ValidateCred{Validate Credentials}
+        
+        ValidateCred -->|✅ Success| CheckStatus{Check User Status}
+        ValidateCred -->|❌ Failure| ShowError[Show Error Message]
+        ShowError -->|Retry| EnterCred
+        
+        CheckStatus -->|✅ Active| CheckRole{Check User Role}
+        CheckStatus -->|❌ Inactive| ShowInactive[Account Inactive]
+        CheckStatus -->|⏳ Pending| ShowPending[Approval Pending]
+        ShowInactive -->|Contact Admin| LoginPage
+        ShowPending -->|Wait for Approval| LoginPage
+        
+        CheckRole -->|Admin| AdminDashboard[Admin Dashboard]
+        CheckRole -->|Manager| ManagerDashboard[Manager Dashboard]
+        CheckRole -->|Staff| StaffDashboard[Staff Dashboard]
+        CheckRole -->|Sales| SalesDashboard[Sales Dashboard]
+        CheckRole -->|Accountant| AccountantDashboard[Accountant Dashboard]
     end
 
-    %% Main Application Flow
-    subgraph App [Main Application]
-        Dashboard --> Inv[Products & Inventory]
-        Dashboard --> Cat[Categories]
-        Dashboard --> Ana[System Analytics]
-        Dashboard --> Rep[Advanced Reports]
-        Dashboard --> Ord[Sales & Orders]
-        Dashboard --> Sup[Vendor Registry]
-        Dashboard --> Users[User Database]
-        Dashboard --> Admin[Admin Panel]
-        Dashboard --> Approvals[Staff Requests]
-        Dashboard --> Roles[Roles & Security]
-        Dashboard --> Sett[Settings]
-        Dashboard --> Prof[User Profile]
-
-        %% Sub-pages & Modals
-        Inv -->|Action| AddProd[Add Product Page]
-        Inv -->|Action| ExportProd[Export CSV/PDF]
+    %% Forgot Password Flow with OTP Verification
+    subgraph Forgot_Password [Password Reset Workflow]
+        LoginPage -->|Forgot Password| ForgotPass[Forgot Password]
+        ForgotPass --> EnterEmail[Enter Registered Email]
+        EnterEmail --> CheckEmail{Email in System?}
         
-        Cat -->|Action| AddCat[Add Category Page]
+        CheckEmail -->|✅ Found| GenerateOTP[Generate 4-digit OTP]
+        CheckEmail -->|❌ Not Found| EmailError[Email Not Registered]
+        EmailError -->|Try Again| EnterEmail
         
-        Ord -->|Action| AddOrd[Create Order Page]
+        GenerateOTP --> SendOTP[Send OTP via Email]
+        SendOTP --> OTPVerification[Enter OTP]
+        OTPVerification --> ValidateOTP{Validate OTP}
         
-        Sup -->|Action| AddSup[Add Supplier Page]
+        ValidateOTP -->|✅ Correct| SetNewPass[Set New Password]
+        ValidateOTP -->|❌ Incorrect| OTPError[Invalid OTP]
+        OTPError -->|Try Again| OTPVerification
+        ValidateOTP -->|⌛ Expired| OTPExpired[OTP Expired]
+        OTPExpired -->|Request New| ForgotPass
         
-        Users -->|Action| AddUser[Add User Page]
+        SetNewPass --> EnterNewPass[Enter New Password]
+        EnterNewPass --> ConfirmNewPass[Confirm New Password]
+        ConfirmNewPass --> ValidatePass{Passwords Match?}
         
-        Admin -->|Analytics| DashboardStats[System Statistics]
-        Admin -->|Monitoring| ActivityLogs[Activity Stream]
+        ValidatePass -->|✅ Yes| UpdatePassword{Update in DB}
+        ValidatePass -->|❌ No| PassMismatch[Passwords Don't Match]
+        PassMismatch -->|Re-enter| SetNewPass
         
-        Approvals -->|Action| ApproveRequest[Assign Role & Approve]
+        UpdatePassword -->|✅ Success| PasswordReset[Password Updated ✓]
+        UpdatePassword -->|❌ Failure| UpdateError[Database Error]
+        UpdateError -->|Retry| UpdatePassword
+        
+        PasswordReset -->|Redirect to| LoginPage
     end
 
-    %% Logout
-    App -->|Logout| Login
+    %% Enhanced Request Access Flow with Email Notifications
+    subgraph Request_Access [Request Access Workflow]
+        LoginPage -->|Request Access| RequestForm[Request Access Form]
+        RequestForm --> EnterDetails[Enter Name & Email]
+        EnterDetails --> CheckUserExists{Check if User Exists}
+        
+        CheckUserExists -->|✅ Already Exists| UserExistsMsg[User Already Exists]
+        CheckUserExists -->|❌ New User| CreatePending[Create Pending Request]
+        
+        UserExistsMsg -->|Redirect to| LoginPage
+        
+        CreatePending --> SendAdminEmail[Send Request Email to Admin]
+        SendAdminEmail --> SendUserWaiting[Send Waiting Email to User]
+        SendUserWaiting --> PendingApproval[Pending Approval Status]
+        
+        PendingApproval --> AdminReview{Admin Reviews Request}
+        
+        AdminReview -->|✅ Approve| ApproveRequest[Approve Request]
+        AdminReview -->|❌ Reject| RejectRequest[Reject Request]
+        
+        ApproveRequest --> CreateUserAccount[Create User Account]
+        CreateUserAccount --> SendApprovalEmail[Send Approval Email to User]
+        SendApprovalEmail --> AccountCreated[Account Created ✓]
+        AccountCreated -->|User Can Now Login| LoginPage
+        
+        RejectRequest --> SendRejectionEmail[Send Rejection Email to User]
+        SendRejectionEmail --> RequestDenied[Request Denied]
+        RequestDenied -->|Back to| LoginPage
+    end
+
+    %% Main Application Operations
+    subgraph Operations [Core Operations Flow]
+        %% Admin Dashboard Operations
+        AdminDashboard --> AdminActions{Select Action}
+        AdminActions -->|User Management| UserMgmt[User Management]
+        AdminActions -->|Approvals| ApprovalDesk[Approval Desk]
+        AdminActions -->|Settings| SysSettings[System Settings]
+        AdminActions -->|Analytics| SysAnalytics[System Analytics]
+        
+        %% Manager Dashboard Operations
+        ManagerDashboard --> ManagerActions{Select Action}
+        ManagerActions -->|Inventory| InvMgmt[Inventory Management]
+        ManagerActions -->|Reports| ViewReports[View Reports]
+        ManagerActions -->|Team| TeamOversight[Team Oversight]
+        
+        %% Staff Dashboard Operations
+        StaffDashboard --> StaffActions{Select Action}
+        StaffActions -->|Update Stock| StockUpdate[Stock Update]
+        StaffActions -->|View Inventory| ViewInv[View Inventory]
+        
+        %% Sales Dashboard Operations
+        SalesDashboard --> SalesActions{Select Action}
+        SalesActions -->|Create Order| CreateOrder[New Order]
+        SalesActions -->|View Products| BrowseProd[Browse Products]
+        SalesActions -->|Sales Metrics| ViewMetrics[View Metrics]
+        
+        %% Accountant Dashboard Operations
+        AccountantDashboard --> AccountantActions{Select Action}
+        AccountantActions -->|Financial Reports| FinReports[Generate Reports]
+        AccountantActions -->|Audit Trail| ViewAudit[View Audit Log]
+        AccountantActions -->|Cost Analysis| CostAnalysis[Cost Analysis]
+    end
+
+    %% CRUD Operations with Success/Failure
+    subgraph CRUD_Ops [Transaction Workflows]
+        %% Add Product Flow
+        InvMgmt --> AddProduct[Add Product Form]
+        AddProduct --> ValidateProduct{Validate Data}
+        ValidateProduct -->|✅ Success| SaveProduct{Save to DB}
+        ValidateProduct -->|❌ Failure| ProductError[Show Validation Errors]
+        ProductError -->|Fix| AddProduct
+        
+        SaveProduct -->|✅ Success| ProductSuccess[Product Added ✓]
+        SaveProduct -->|❌ Failure| ProductDBError[Database Error]
+        ProductDBError -->|Retry| SaveProduct
+        
+        %% Create Order Flow
+        CreateOrder --> SelectItems[Select Products]
+        SelectItems --> ValidateStock{Check Stock}
+        ValidateStock -->|✅ Available| ProcessOrder{Process Payment}
+        ValidateStock -->|❌ Out of Stock| StockAlert[Low Stock Alert]
+        StockAlert -->|Adjust Order| SelectItems
+        
+        ProcessOrder -->|✅ Success| OrderConfirm[Order Confirmed ✓]
+        ProcessOrder -->|❌ Failure| PaymentError[Payment Failed]
+        PaymentError -->|Try Again| ProcessOrder
+        
+        %% Approval Flow
+        ApprovalDesk --> ViewRequest[View Pending Request]
+        ViewRequest --> Decision{Approve or Reject?}
+        Decision -->|✅ Approve| AssignRole[Assign Role]
+        Decision -->|❌ Reject| RejectReason[Add Rejection Reason]
+        
+        AssignRole --> SaveAssignment{Save Assignment}
+        SaveAssignment -->|✅ Success| NotifyUser[Notify User ✓]
+        SaveAssignment -->|❌ Failure| AssignmentError[Save Failed]
+        AssignmentError -->|Retry| AssignRole
+        
+        RejectReason --> SaveRejection{Save Rejection}
+        SaveRejection -->|✅ Success| NotifyRejection[Notify User of Rejection]
+        SaveRejection -->|❌ Failure| RejectionError[Save Failed]
+        RejectionError -->|Retry| RejectReason
+    end
+
+    %% Logout Flow
+    AdminDashboard -->|Logout| Logout{Confirm Logout?}
+    ManagerDashboard -->|Logout| Logout
+    StaffDashboard -->|Logout| Logout
+    SalesDashboard -->|Logout| Logout
+    AccountantDashboard -->|Logout| Logout
+    
+    Logout -->|✅ Yes| LoginPage
+    Logout -->|❌ No| ReturnToDash[Return to Dashboard]
+
+    %% Success Path Connections
+    ProductSuccess -->|Continue| InvMgmt
+    OrderConfirm -->|Continue| SalesDashboard
+    NotifyUser -->|Back to| ApprovalDesk
+    NotifyRejection -->|Back to| ApprovalDesk
+
+    %% Styling for Professional Look
+    classDef success fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
+    classDef failure fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
+    classDef decision fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
+    classDef process fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:#fff
+    classDef dashboard fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff
+    classDef terminal fill:#6b7280,stroke:#4b5563,stroke-width:2px,color:#fff
+    classDef email fill:#ec4899,stroke:#db2777,stroke-width:2px,color:#fff
+    
+    class ProductSuccess,OrderConfirm,PasswordReset,AccountCreated,ProductSuccess,NotifyUser success
+    class ShowError,ProductError,StockAlert,PaymentError,EmailError,OTPError,OTPExpired,PassMismatch,UpdateError,AssignmentError,RejectionError,UserExistsMsg,RequestDenied failure
+    class ValidateCred,CheckStatus,CheckRole,CheckEmail,ValidateOTP,ValidatePass,UpdatePassword,CheckUserExists,AdminReview,SubmitRequest,ValidateProduct,SaveProduct,ValidateStock,ProcessOrder,Decision,SaveAssignment,SaveRejection,Logout decision
+    class EnterCred,ShowInactive,ShowPending,EnterEmail,GenerateOTP,SendOTP,OTPVerification,SetNewPass,EnterNewPass,ConfirmNewPass,EnterDetails,CreatePending,SendAdminEmail,SendUserWaiting,PendingApproval,ApproveRequest,RejectRequest,CreateUserAccount,SendApprovalEmail,SendRejectionEmail,UserMgmt,ApprovalDesk,InvMgmt,AddProduct,CreateOrder process
+    class AdminDashboard,ManagerDashboard,StaffDashboard,SalesDashboard,AccountantDashboard dashboard
+    class Start,LoginPage,PasswordReset,ForgotPass,RequestForm terminal
+    class SendAdminEmail,SendUserWaiting,SendApprovalEmail,SendRejectionEmail email
 ```
 
 ## Detailed Connectivity Matrix
 
-| From Page | Action | To Page/Modal |
-| :--- | :--- | :--- |
-| **Login** | Sign In | Dashboard |
-| **Login** | Forgot Password | Reset Password |
-| **Login** | Request Access | Request Access |
-| **Dashboard** | Navigation | Any Module |
-| **Admin Panel** | View Stats | Dashboard Statistics |
-| **Admin Panel** | Scrutiny | Activity Stream |
-| **Inventory** | Export CSV/PDF | Download File |
-| **Inventory** | Add Product | Add Product Page |
-| **Categories** | Add Category | Add Category (Page) |
-| **Orders** | Create Order | Add Order (Page) |
-| **Suppliers** | Add Supplier | Add Supplier (Page) |
-| **User Database** | Add User | Add User (Page) |
-| **Roles & Security** | View Perms | Permission List |
-| **Staff Requests** | Action | Assign Role & Approve |
-| **Add Product** | Save | Products & Inventory |
+| From Page | Action | To Page/Modal | Trigger/Logic |
+| :--- | :--- | :--- | :--- |
+| **Login** | Enter Credentials | Validate Creds | Frontend form submission |
+| **Login** | Forgot Password | Reset Password | Logic: Reset workflow |
+| **Login** | Request Access | Request Access | Logic: Onboarding workflow |
+| **Login** | Sign In Success | Check Status | Logic: Check for Active/Pending/Inactive |
+| **Check Status** | ✅ Active | Check Role | Redirect to appropriate Dashboard |
+| **Check Status** | ⏳ Pending | Show Pending | Action: Show "Approval Pending" modal |
+| **Check Status** | ❌ Inactive | Show Inactive | Action: Show "Account Inactive" alert |
+| **Reset Password**| Enter Email | Generate OTP | Logic: Server-side validation |
+| **Reset Password**| Validate OTP | Set New Pass | Logic: 4-digit code match |
+| **Request Access** | Submit Request | Pending Approval | Trigger: NodeMailer sends Admin/User emails |
+| **Approval Desk** | Review Request | Decision Point | Action: Approve or Reject user |
+| **Approval Desk** | ✅ Approve | Assign Role | Logic: User account becomes "Active" |
+| **Inventory** | Add Product | Add Product Page | Action: Opens product creation form |
+| **Orders** | Create Order | Select Items | Logic: Real-time stock availability check |
+| **Dashboards** | Logout | Confirm Logout | Action: JWT destruction & redirect |
 
 ## Website Logic & Algorithms
 
-This section describes the conditional logic and "algorithms" that drive the InvenPro user experience across all modules.
+### 1. Advanced Authentication & Status Logic
+**Objective**: Ensure only authorized and active personnel can enter the sytem.
 
-### 1. Authentication & Access Algorithm
-**Objective**: Control entry and identity within the application.
+*   **Credential Validation**: 
+    1. User submits Login form.
+    2. Server verifies email/password hash.
+    3. **Fail**: Trigger "Invalid Credentials" Toast -> Halt.
+*   **Status Lifecycle Check**:
+    *   **Active**: Grant JWT -> Identify Role -> Route to specific Dashboard.
+    *   **Pending**: Block Login -> Show "Waiting for Admin Approval" feedback.
+    *   **Inactive**: Block Login -> Notify user to contact Admin.
 
-*   **Step 1**: User lands on `Login Page`.
-*   **Step 2**: User enters credentials.
-    *   **If Successful**: Server issues JWT -> Redirect to `Dashboard`.
-    *   **If Failed**: Show "Invalid Credentials" error -> Stay on `Login Page`.
-*   **Step 3**: User has no account?
-    *   **Action**: Click "Request Access".
-    *   **Flow**: Fill Request Form (Name, Email, Role) -> Submit -> `Wait for Admin Approval`.
-*   **Step 4**: Forgot Password?
-    *   **Action**: Click "Reset Password".
-    *   **Flow**: Enter Email -> Verify Code -> Set New Password -> Return to `Login Page`.
+### 2. Password Reset (OTP) Algorithm
+**Objective**: Secure self-service account recovery.
 
-### 2. Full Website Lifecycle (Module Flows)
+1.  **Request**: User enters registered email.
+2.  **Verification**: System generates a 4-digit OTP; stores with expiry.
+3.  **Transmission**: `backend/utils/email.utils.js` sends OTP via NodeMailer.
+4.  **Validation**: User enters OTP.
+    *   **Correct**: Unlock "Set New Password" fields.
+    *   **Incorrect**: Show error; limit attempts to 3.
+    *   **Expired**: Force user to restart the flow.
+5.  **Completion**: Passwords must match -> Update DB -> Redirect to Login.
 
-#### A. Inventory & Categories (The Data Core)
-*   **Adding Products**: 
-    1. Click `Add Product` -> Open Modal.
-    2. Input Details (Automated SKU generation or manual entry).
-    3. **Logic**: Check if Category exists? 
-       *   **Yes**: Linking to Category. 
-       *   **No**: Prompt to create Category first in `Add Category`.
-*   **Tracking**: Quantity falls below threshold -> Update Status to `Low Stock` (Cyan badge) or `Out of Stock` (Red badge).
+### 3. Request Access & Onboarding Workflow
+**Objective**: Controlled entry via administrative oversight.
 
-#### B. Procurement & Sales (Suppliers & Orders)
-*   **Supplier Onboarding**: `Suppliers` -> `Add Supplier`.
-*   **Order Workflow**:
-    1. `Orders` -> `Create Order`.
-    2. Select `Product` + Select `Supplier`.
-    3. **Automation**: Update product stock quantities once Order status is marked as `Received`.
+1.  **Submission**: Applicant fills form (Name, Email, Message).
+2.  **Duplication Check**: System verifies if Email is already in `Users` or `AccessRequests`.
+3.  **Notifications**:
+    *   **To Admin**: High-priority "New Access Request" alert.
+    *   **To User**: "Request Received - Awaiting Review" confirmation.
+4.  **Admin Review**: Admin reviews details in the `Approval Desk`.
+    *   **Approval**: Admin assigns a Role -> Status becomes `Active` -> User is notified.
+    *   **Rejection**: Admin provides reason -> Request Archived -> User is notified of Denial.
 
-#### C. Business Intelligence (Analytics & Reports)
-*   **Analytics**: Fetches real-time data from MongoDB -> Calculates "Top Selling Categories" and "Total Inventory Value".
-*   **Reports**: Generates detailed summaries (PDF/CSV) for weekly or monthly audits.
+### 4. Transactional Logic (CRUD Workflows)
 
-#### D. Administrative Control (Roles & Security)
-*   **Approval Loop**:
-    1. Admin navigates to `Staff Requests`.
-    2. Review pending registrations.
-    3. **Fields**: Name, Email, Requested Role, Message.
-    4. **Actions**: 
-        *   **Approve**: Assign final system role -> Create active account -> Trigger Credentials Notification.
-        *   **Reject**: Deny access -> Request archived/rejected.
-*   **Role Management**:
-    *   **Admin**: Total system control, user management, activity monitoring.
-    *   **Manager**: Inventory auditing, Supplier management, Analytical overviews.
-    *   **Warehouse Staff**: Stock reconciliation, product updates, order processing.
-    *   **Sales Staff**: Order creation, customer data, sales metrics.
-    *   **Accountant**: Revenue tracking, purchase auditing, financial reports.
+#### A. Product Creation (Inventory)
+1.  **Form Validation**: Check if SKU or Barcode is unique.
+2.  **Category Linkage**: If category is new, it must be created before product finalization.
+3.  **Stock Threshold**: `lowStockThreshold` set during creation for automated alerts.
 
-#### E. Security & Monitoring (Audit System)
-*   **Activity Logging**:
-    1. Every administrative action (Create/Edit/Delete/Approve) is tracked.
-    2. **Tracking Fields**: `User ID`, `Action Type`, `Module`, `Timestamp`, `IP Address`.
-    3. Admin reviews history in `Activity Stream` on the `Admin Panel`.
+#### B. Order Fulfillment (Sales)
+1.  **Stock Verification**: Before processing, system checks `initialQty` for each item.
+2.  **Payment Processing**: If success, trigger state update.
+3.  **Inventory Sync**: Automatically deduct `initialQty` based on order volume.
+4.  **Notification**: Trigger "Shortage Alert" if stock drops below threshold post-order.
 
 ### 3. Settings & Personalization
 *   **Profile**: Update name, bio, and profile picture.
@@ -152,129 +290,153 @@ The following diagram illustrates how permissions are distributed and inherited 
 
 ```mermaid
 graph TD
-    subgraph Roles [User Archetype Hierarchy]
-        Admin((Administrator))
-        Manager[Manager]
-        Staff[Warehouse Staff]
-        Sales[Sales Staff]
-        Accountant[Accountant]
+    %% User Archetype Hierarchy with Clear Role Relationships
+    subgraph Roles [User Archetype Hierarchy - RBAC Structure]
+        Root((Super Admin))
+        
+        Root --> Admin((Administrator))
+        Admin --> Manager[Manager]
+        Manager --> Staff[Warehouse Staff]
+        Manager --> Sales[Sales Staff]
+        Admin --> Accountant[Accountant]
+        
+        %% Role Relationships
+        Staff -.-> |Reports to| Manager
+        Sales -.-> |Reports to| Manager
+        Manager -.-> |Reports to| Admin
+        Accountant -.-> |Reports to| Admin
     end
 
-    subgraph Admin_Privileges [System Privileges]
-        U_MGT[User Management]
-        U_APP[Approval Desk]
-        U_AUD[Full Activity Audit]
-        S_SET[System Settings]
+    subgraph Admin_Privileges [System Privileges - Level 4]
+        direction TB
+        U_MGT[👥 User Management<br/>Create/Edit/Delete Users]
+        U_APP[✅ Approval Desk<br/>Pending Requests]
+        U_AUD[📋 Full Activity Audit<br/>All System Logs]
+        S_SET[⚙️ System Settings<br/>Configuration]
     end
 
-    subgraph Operations [Operational Privileges]
-        I_CRUD[Product CRUD]
-        C_CRUD[Category CRUD]
-        V_MGT[Vendor/Supplier Registry]
-        A_VIZ[System Analytics]
+    subgraph Operations [Operational Privileges - Level 3]
+        direction TB
+        I_CRUD[📦 Product CRUD<br/>Full Product Control]
+        C_CRUD[🏷️ Category CRUD<br/>Category Management]
+        V_MGT[🤝 Vendor Registry<br/>Supplier Management]
+        A_VIZ[📊 System Analytics<br/>Dashboard Metrics]
     end
 
-    subgraph Execution [Floor Execution]
-        S_UPD[Stock Level Updates]
-        O_TRK[Procurement Tracking]
-        I_RED[Inventory Read-Only]
+    subgraph Execution [Floor Execution - Level 2]
+        direction TB
+        S_UPD[📈 Stock Updates<br/>Real-time Inventory]
+        O_TRK[🚚 Procurement Tracking<br/>Order Status]
+        I_RED[👁️ Inventory Read-Only<br/>View Only Access]
     end
 
-    subgraph Commercial [Commercial Actions]
-        O_CRT[Create Sales Orders]
-        S_MET[Sales Metrics]
-        P_SRCH[Product Discovery]
+    subgraph Commercial [Commercial Actions - Level 2]
+        direction TB
+        O_CRT[💰 Create Sales Orders<br/>Process Sales]
+        S_MET[📈 Sales Metrics<br/>Performance Data]
+        P_SRCH[🔍 Product Discovery<br/>Search & Browse]
     end
 
-    subgraph Financial [Financial Forensics]
-        R_ADV[Advanced Reports]
-        C_AUD[Cost Auditing]
-        O_HIST[Full Order History]
+    subgraph Financial [Financial Forensics - Level 3]
+        direction TB
+        R_ADV[📑 Advanced Reports<br/>Custom Reporting]
+        C_AUD[💰 Cost Auditing<br/>Financial Analysis]
+        O_HIST[📜 Full Order History<br/>Transaction Logs]
     end
 
-    %% Permission Mapping
-    Admin ===> Admin_Privileges
-    Admin ---> Operations
-    Admin ---> Execution
-    Admin ---> Commercial
-    Admin ---> Financial
-
-    Manager ---> Operations
-    Manager ---> Execution
-    Manager ---> Commercial
-    Manager -.-> Financial
-
-    Staff ---> Execution
+    %% Permission Mapping with Clear Access Levels
+    %% Solid line = Full Access, Dashed line = Limited/Read-only Access
     
-    Sales ---> Commercial
-    Sales -.-> Execution
+    %% Admin Level Access
+    Admin ===>|Full Control| Admin_Privileges
+    Admin --->|Manage| Operations
+    Admin --->|Oversee| Execution
+    Admin --->|Monitor| Commercial
+    Admin --->|Review| Financial
 
-    Accountant ---> Financial
-    Accountant -.-> Operations
+    %% Manager Level Access
+    Manager --->|Manage| Operations
+    Manager --->|Supervise| Execution
+    Manager --->|View| Commercial
+    Manager -.->|Read-only| Financial
 
-    %% Style
-    style Admin fill:#4f46e5,stroke:#fff,stroke-width:2px,color:#fff
-    style Manager fill:#0891b2,stroke:#fff,stroke-width:2px,color:#fff
-    style Admin_Privileges fill:#7f1d1d,stroke:#ef4444,color:#fff
-    style Operations fill:#1e1b4b,stroke:#4f46e5,color:#fff
-    style Financial fill:#451a03,stroke:#f59e0b,color:#fff
+    %% Staff Level Access
+    Staff --->|Update| Execution
+    Staff -.->|View Only| Commercial
+    
+    %% Sales Level Access
+    Sales --->|Create & View| Commercial
+    Sales -.->|Basic View| Execution
+
+    %% Accountant Level Access
+    Accountant --->|Full Access| Financial
+    Accountant -.->|Read-only| Operations
+
+    %% Cross-Departmental Dependencies
+    Operations -.->|Provides Data to| Financial
+    Execution -.->|Updates| Operations
+    Commercial -.->|Generates Data for| Financial
+
+    %% Legend
+    subgraph Legend [Access Level Legend]
+        L1[🔵 Solid Line = Full Access]
+        L2[⚪ Dashed Line = Limited/Read-only]
+        L3[⬆️ Hierarchy Flow = Reports To]
+    end
+
+    %% Styling
+    style Root fill:#312e81,stroke:#818cf8,stroke-width:3px,color:#fff
+    style Admin fill:#4f46e5,stroke:#c7d2fe,stroke-width:2px,color:#fff
+    style Manager fill:#0891b2,stroke:#a5f3fc,stroke-width:2px,color:#fff
+    style Staff fill:#059669,stroke:#a7f3d0,stroke-width:2px,color:#fff
+    style Sales fill:#b45309,stroke:#fed7aa,stroke-width:2px,color:#fff
+    style Accountant fill:#7c3aed,stroke:#ddd6fe,stroke-width:2px,color:#fff
+    
+    style Admin_Privileges fill:#7f1d1d,stroke:#ef4444,stroke-width:2px,color:#fff
+    style Operations fill:#1e1b4b,stroke:#4f46e5,stroke-width:2px,color:#fff
+    style Execution fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff
+    style Commercial fill:#92400e,stroke:#f59e0b,stroke-width:2px,color:#fff
+    style Financial fill:#451a03,stroke:#fbbf24,stroke-width:2px,color:#fff
+    
+    style Legend fill:#1f2937,stroke:#6b7280,stroke-width:1px,color:#fff
 ```
 
-### 1. The Administrator (Full Authority)
-**Objective**: Oversee system health, security, and staff lifecycle.
-*   **Permissions**:
-    *   **User Management**: Approve/Reject access requests, assign roles, reset user credentials.
-    *   **Security Auditing**: Access to raw `Activity Logs` and `System Statistics`.
-    *   **Database Control**: Full CRUD on Products, Categories, Suppliers, and Orders.
-*   **Workflow**:
-    1.  Monitor `Admin Panel` for system anomalies.
-    2.  Check `Staff Requests` daily to onboard new employees.
-    3.  Review `Activity Stream` to audit changes made by Managers or Staff.
+### 1. The Administrator (Full Authority - Level 4)
+**Objective**: System integrity, global settings, and personnel oversight.
+*   **Core Actions**:
+    *   **Approval Desk**: Full ownership of the Staff Onboarding lifecycle.
+    *   **System Settings**: Configuration of organization details and currencies.
+    *   **Audit Trail**: Reviewing the `Activity Stream` for all Level 1-3 actions.
+*   **Oversight**: Directly manages the **Manager** and **Accountant** roles.
 
-### 2. The Manager (Operational Lead)
-**Objective**: Drive inventory accuracy and procurement strategy.
-*   **Permissions**:
-    *   **Inventory Control**: Full CRUD on `Products` and `Categories`.
-    *   **Vendor Management**: Manage `Supplier` registry and contact details.
-    *   **Analytics**: View high-level `System Analytics` to identify trends.
-*   **Workflow**:
-    1.  Audit stock levels in `Inventory`.
-    2.  Identify low-stock items -> Reach out to `Suppliers`.
-    3.  Generate monthly `Reports` for the Admin.
-*   **Restriction**: Cannot access User Database or Approval panels.
+### 2. The Manager (Operational Lead - Level 3)
+**Objective**: Tactical management of inventory, vendors, and team performance.
+*   **Core Actions**:
+    *   **Team Oversight**: Supervising the **Warehouse Staff** and **Sales Staff**.
+    *   **Inventory CRUD**: Full control over product specifications and category data.
+    *   **Vendor Registry**: Managing the supplier database and procurement contacts.
+*   **Restriction**: No access to System Settings or the Approval Desk.
 
-### 3. Warehouse Staff (Inventory Execution)
-**Objective**: Ensure physical stock matches digital records.
-*   **Permissions**:
-    *   **Stock Updates**: Modify quantities and update stock status.
-    *   **Read Access**: View `Products`, `Categories`, and `Suppliers`.
-    *   **Order Tracking**: View procurement orders to reconcile arriving stock.
-*   **Workflow**:
-    1.  Receive shipment -> Locate item in `Products`.
-    2.  Update quantity -> System automatically clears `Low Stock` badges.
-    3.  Log physical discrepancies in the product notes.
+### 3. Warehouse Staff (Floor Execution - Level 2)
+**Objective**: Real-time stock accuracy and procurement reconciliation.
+*   **Core Actions**:
+    *   **Stock Updates**: Modifying quantities during shipment reception.
+    *   **Procurement Tracking**: Viewing order statuses to prepare for arriving stock.
+*   **Reports to**: Manager.
 
-### 4. Sales Staff (Outbound Flow)
-**Objective**: Facilitate transactions and manage customer demand.
-*   **Permissions**:
-    *   **Order Creation**: Create and process sales `Orders`.
-    *   **Product Lookup**: Search and filter `Inventory` for availability.
-    *   **Sales Metrics**: View limited analytics related to sales performance.
-*   **Workflow**:
-    1.  Customer request -> Check `Product & Inventory` for stock.
-    2.  Navigate to `Orders` -> `Create Order`.
-    3.  System saves order -> Triggers stock deduction (Automated).
+### 4. Sales Staff (Commercial Actions - Level 2)
+**Objective**: Driving revenue through order creation and product discovery.
+*   **Core Actions**:
+    *   **New Orders**: Processing sales and checking real-time availability.
+    *   **Product Discovery**: Searching the catalog for customer inquiries.
+*   **Reports to**: Manager.
 
-### 5. The Accountant (Financial Auditor)
-**Objective**: Track revenue, costs, and audit financial trails.
-*   **Permissions**:
-    *   **Advanced Reports**: Full access to exportable financial summaries (PDF/CSV).
-    *   **Cost Auditing**: View unit costs, supplier pricing, and total inventory value.
-    *   **Order History**: Review all processed sales and purchases.
-*   **Workflow**:
-    1.  Navigate to `Advanced Reports`.
-    2.  Filter by date range -> Export for tax/accounting software.
-    3.  Audit `Suppliers` for pricing consistency.
+### 5. The Accountant (Financial Forensics - Level 3)
+**Objective**: Financial auditing, cost analysis, and advanced reporting.
+*   **Core Actions**:
+    *   **Advanced Reports**: Generating tax-ready financial summaries.
+    *   **Cost Auditing**: Reviewing product margins and supplier pricing.
+*   **Reports to**: Administrator.
 
 ---
 

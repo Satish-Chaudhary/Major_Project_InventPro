@@ -14,6 +14,7 @@ import Settings from './pages/Settings';
 import UserProfile from './pages/UserProfile';
 import UserManagement from './pages/UserManagement';
 import UserApprovals from './pages/UserApprovals';
+import AuditLogs from './pages/AuditLogs';
 import AddProduct from './pages/AddProduct';
 import AddCategory from './pages/AddCategory';
 import AdminRegister from './pages/AdminRegister';
@@ -24,6 +25,7 @@ import AddOrder from './pages/AddOrder';
 import AddSupplier from './pages/AddSupplier';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminRoles from './pages/AdminRoles';
+import AddRole from './pages/AddRole';
 import MainLayout from './components/layout/MainLayout';
 import { useApp } from './context/AppContext.jsx';
 
@@ -97,6 +99,7 @@ const App = () => {
               <Categories />
             </ProtectedRoute>
           } />
+          <Route path='/audit' element={<AuditLogs />} />
           <Route path='/analytics' element={
             <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin', 'manager', 'accountant']}>
               <Analytics />
@@ -161,6 +164,11 @@ const App = () => {
           <Route path='/roles' element={
             <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin']}>
               <AdminRoles />
+            </ProtectedRoute>
+          } />
+          <Route path='/add-role' element={
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin']}>
+              <AddRole />
             </ProtectedRoute>
           } />
         </Route>

@@ -127,7 +127,7 @@ const AdminRegister = () => {
                     </form>
 
                     <div className="mt-6 text-center">
-                        <button onClick={() => navigate('/login')} className="text-slate-500 text-sm hover:text-white transition-colors">
+                        <button onClick={() => navigate('/login', { state: { isAdmin: true } })} className="text-slate-500 text-sm hover:text-white transition-colors">
                             Already have an account? <span className="text-purple-400 font-bold underline">Login</span>
                         </button>
                     </div>

@@ -12,11 +12,16 @@ import { useApp } from '../context/AppContext';
 
 const AddUser = ({ isOpen = true }) => {
     const navigate = useNavigate();
-    const { addUser } = useApp();
+    const { addUser, allRoles, departments } = useApp();
     const onClose = () => navigate('/users');
     const [formData, setFormData] = useState({
-        role: 'Staff Member',
-        department: 'General',
+        fullName: '',
+        email: '',
+        phone: '',
+        password: '',
+        confirmPassword: '',
+        role: allRoles.length > 0 ? allRoles[0].name : 'Staff Member',
+        department: departments.length > 0 ? departments[0].name : 'General',
         status: 'active'
     });
 
@@ -41,11 +46,11 @@ const AddUser = ({ isOpen = true }) => {
                 {/* Header */}
                 <div className="px-10 py-8 border-b border-slate-800 flex items-center justify-between bg-linear-to-r from-purple-500/5 to-cyan-500/5">
                     <div>
-                        <div className="flex items-center gap-2 text-slate-500 text-[10px] font-bold uppercase tracking-widest leading-none mb-1">
+                        {/* <div className="flex items-center gap-2 text-slate-500 text-[10px] font-bold uppercase tracking-widest leading-none mb-1">
                             <span>User Management</span>
                             <ChevronRight className="w-3 h-3" />
                             <span className="text-slate-300">Add New User</span>
-                        </div>
+                        </div> */}
                         <h2 className="text-3xl font-bold text-white tracking-tight">Add New User</h2>
                     </div>
                     <div className="flex items-center gap-4">
@@ -56,18 +61,9 @@ const AddUser = ({ isOpen = true }) => {
                             Cancel
                         </button>
                         <button
-                            onClick={() => {
-                                addUser({
-                                    id: Date.now(),
-                                    name: formData.name || 'New User',
-                                    email: formData.email || 'user@company.com',
-                                    role: formData.role,
-                                    status: formData.status === 'active' ? 'Active' : 'Offline',
-                                    color: 'text-slate-400',
-                                    lastActive: 'Just now',
-                                    avatar: `https://i.pravatar.cc/100?u=${Date.now()}`
-                                });
-                                onClose();
+                            onClick={async () => {
+                                const success = await addUser(formData);
+                                if (success) onClose();
                             }}
                             className="px-8 py-3 rounded-2xl bg-linear-to-r from-purple-600 to-cyan-600 text-white font-black uppercase tracking-widest hover:brightness-110 shadow-lg shadow-purple-500/20 flex items-center gap-2 transition-all text-[10px]"
                         >
@@ -98,6 +94,8 @@ const AddUser = ({ isOpen = true }) => {
                                             <User className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-purple-400 transition-colors" />
                                             <input
                                                 type="text"
+                                                value={formData.fullName}
+                                                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                                                 placeholder="e.g. Jane Doe"
                                                 className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl pl-14 pr-5 py-5 text-white text-sm focus:outline-none focus:border-purple-500/50 transition-all focus:ring-4 focus:ring-purple-500/5"
                                             />
@@ -110,6 +108,8 @@ const AddUser = ({ isOpen = true }) => {
                                             <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
                                             <input
                                                 type="email"
+                                                value={formData.email}
+                                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                                 placeholder="e.g. jane.doe@company.com"
                                                 className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl pl-14 pr-5 py-5 text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-all focus:ring-4 focus:ring-cyan-500/5"
                                             />
@@ -122,6 +122,8 @@ const AddUser = ({ isOpen = true }) => {
                                             <Phone className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
                                             <input
                                                 type="text"
+                                                value={formData.phone}
+                                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                                 placeholder="e.g. +1 (555) 000-0000"
                                                 className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl pl-14 pr-5 py-5 text-white text-sm focus:outline-none focus:border-emerald-500/50 transition-all focus:ring-4 focus:ring-emerald-500/5"
                                             />
@@ -144,7 +146,9 @@ const AddUser = ({ isOpen = true }) => {
                                             <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-purple-400 transition-colors" />
                                             <input
                                                 type="password"
-                                                defaultValue="••••••••"
+                                                value={formData.password}
+                                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                                placeholder="••••••••"
                                                 className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl pl-14 pr-5 py-5 text-white text-sm focus:outline-none focus:border-purple-500/50 transition-all focus:ring-4 focus:ring-purple-500/5"
                                             />
                                         </div>
@@ -156,7 +160,9 @@ const AddUser = ({ isOpen = true }) => {
                                             <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-purple-400 transition-colors" />
                                             <input
                                                 type="password"
-                                                defaultValue="••••••••"
+                                                value={formData.confirmPassword}
+                                                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                                                placeholder="••••••••"
                                                 className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl pl-14 pr-5 py-5 text-white text-sm focus:outline-none focus:border-purple-500/50 transition-all focus:ring-4 focus:ring-purple-500/5"
                                             />
                                         </div>
@@ -168,37 +174,15 @@ const AddUser = ({ isOpen = true }) => {
                         {/* Right Column - Controls & Media */}
                         <div className="lg:col-span-4 space-y-10">
 
-                            {/* Access Control */}
+                            {/* Profile Picture */}
                             <section className="bg-slate-900/40 border border-slate-800/60 rounded-4xl p-10 space-y-8">
-                                <div className="flex flex-col gap-1">
-                                    <h3 className="text-xl font-bold text-white tracking-tight leading-none">Access Control</h3>
-                                    <p className="text-slate-500 text-xs font-semibold">Assign role and permissions</p>
-                                </div>
-
-                                <div className="space-y-6">
-                                    <div className="space-y-2">
-                                        <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Role</label>
-                                        <div className="relative group">
-                                            <ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                                            <select className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-14 pr-5 py-5 text-white text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-purple-500/50 appearance-none cursor-pointer">
-                                                <option>Staff Member</option>
-                                                <option>Administrator</option>
-                                                <option>Operational Manager</option>
-                                            </select>
-                                        </div>
+                                <h3 className="text-xl font-bold text-white tracking-tight leading-none">Profile Picture</h3>
+                                <div className="group relative border-2 border-dashed border-slate-800 bg-slate-950/20 rounded-4xl p-12 flex flex-col items-center justify-center text-center cursor-pointer hover:border-purple-500/50 hover:bg-purple-500/5 transition-all">
+                                    <div className="w-16 h-16 rounded-full bg-slate-800 border-4 border-slate-900/50 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                                        <Camera className="w-8 h-8 text-slate-500" />
                                     </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Department</label>
-                                        <div className="relative group">
-                                            <Briefcase className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                                            <select className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-14 pr-5 py-5 text-white text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-purple-500/50 appearance-none cursor-pointer">
-                                                <option>General</option>
-                                                <option>Logistics</option>
-                                                <option>Management</option>
-                                            </select>
-                                        </div>
-                                    </div>
+                                    <p className="text-white text-sm font-black uppercase tracking-widest">Upload Photo</p>
+                                    <p className="text-slate-600 text-[10px] font-bold uppercase tracking-widest mt-3">JPG or PNG (max. 1MB)</p>
                                 </div>
                             </section>
 
@@ -242,15 +226,49 @@ const AddUser = ({ isOpen = true }) => {
                                 </div>
                             </section>
 
-                            {/* Profile Picture */}
+                            {/* Access Control */}
                             <section className="bg-slate-900/40 border border-slate-800/60 rounded-4xl p-10 space-y-8">
-                                <h3 className="text-xl font-bold text-white tracking-tight leading-none">Profile Picture</h3>
-                                <div className="group relative border-2 border-dashed border-slate-800 bg-slate-950/20 rounded-4xl p-12 flex flex-col items-center justify-center text-center cursor-pointer hover:border-purple-500/50 hover:bg-purple-500/5 transition-all">
-                                    <div className="w-16 h-16 rounded-full bg-slate-800 border-4 border-slate-900/50 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                                        <Camera className="w-8 h-8 text-slate-500" />
+                                <div className="flex flex-col gap-1">
+                                    <h3 className="text-xl font-bold text-white tracking-tight leading-none">Access Control</h3>
+                                    <p className="text-slate-500 text-xs font-semibold">Assign role and permissions</p>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <div className="space-y-2">
+                                        <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Role</label>
+                                        <div className="relative group">
+                                            <ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                                            <select
+                                                value={formData.role}
+                                                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                                                className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-14 pr-5 py-5 text-white text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-purple-500/50 appearance-none cursor-pointer"
+                                            >
+                                                {allRoles.length > 0 ? allRoles.map(role => (
+                                                    <option key={role._id} value={role.name}>{role.name}</option>
+                                                )) : (
+                                                    <option>Staff Member</option>
+                                                )}
+                                            </select>
+                                        </div>
                                     </div>
-                                    <p className="text-white text-sm font-black uppercase tracking-widest">Upload Photo</p>
-                                    <p className="text-slate-600 text-[10px] font-bold uppercase tracking-widest mt-3">JPG or PNG (max. 1MB)</p>
+
+                                    <div className="space-y-2">
+                                        <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Department</label>
+                                        <div className="relative group">
+                                            <Briefcase className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                                            <select
+                                                value={formData.department}
+                                                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                                                className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-14 pr-5 py-5 text-white text-xs font-bold uppercase tracking-widest focus:outline-none focus:border-purple-500/50 appearance-none cursor-pointer"
+                                            >
+                                                {departments.length > 0 ? departments.map(dept => (
+                                                    <option key={dept._id} value={dept.name}>{dept.name}</option>
+                                                )) : (
+                                                    <option>General</option>
+                                                )}
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
                             </section>
                         </div>
