@@ -10,61 +10,41 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
 import { toast } from 'react-hot-toast';
-import axios from 'axios';
-import { serverUrl } from '../App';
+import { 
+    useGetPendingRequestsQuery, 
+    useApproveUserMutation, 
+    useRejectUserMutation,
+    useGetAuditLogsQuery 
+} from '../redux/slices/adminSlice';
 import { ClipLoader } from 'react-spinners';
-import { useApp } from '../context/AppContext';
 
 const UserApprovals = () => {
-    const { fetchAuditLogs } = useApp();
+    const { data: requestsData, isLoading: loading, refetch: fetchRequests } = useGetPendingRequestsQuery();
+    const { refetch: fetchAuditLogs } = useGetAuditLogsQuery();
+    const [approveUser] = useApproveUserMutation();
+    const [rejectUser] = useRejectUserMutation();
+
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilter, setActiveFilter] = useState('pending'); // pending, active, rejected
     const [expandedUser, setExpandedUser] = useState(null);
-    const [allUsers, setAllUsers] = useState([]);
-    const [loading, setLoading] = useState(true);
 
-    const fetchRequests = async () => {
-        setLoading(true);
-        try {
-            const response = await axios.get(`${serverUrl}/api/auth/pending-requests`, { withCredentials: true });
-            if (response.data.success) {
-                setAllUsers(response.data.requests);
-            }
-        } catch (error) {
-            console.error('Error fetching requests:', error);
-            toast.error('Sync failed: Persistence node unreachable');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchRequests();
-    }, []);
+    const allUsers = requestsData?.requests || [];
 
     const handleApprove = async (id, name) => {
         try {
-            const response = await axios.post(`${serverUrl}/api/auth/approve/${id}`, {}, { withCredentials: true });
-            if (response.data.success) {
-                toast.success(`Access granted: ${name}`);
-                fetchRequests();
-                fetchAuditLogs();
-            }
+            await approveUser(id).unwrap();
+            toast.success(`Access granted: ${name}`);
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Authorization failed');
+            toast.error(error.data?.message || 'Authorization failed');
         }
     };
 
     const handleReject = async (id, name) => {
         try {
-            const response = await axios.post(`${serverUrl}/api/auth/reject/${id}`, { reason: 'Policy non-compliance' }, { withCredentials: true });
-            if (response.data.success) {
-                toast.error(`Access denied: ${name}`);
-                fetchRequests();
-                fetchAuditLogs();
-            }
+            await rejectUser({ id, reason: 'Policy non-compliance' }).unwrap();
+            toast.error(`Access denied: ${name}`);
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Revocation failed');
+            toast.error(error.data?.message || 'Revocation failed');
         }
     };
 

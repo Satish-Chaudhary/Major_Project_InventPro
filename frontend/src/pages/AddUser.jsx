@@ -8,11 +8,23 @@ import {
 import { clsx } from 'clsx';
 
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
+import { 
+    useAddUserMutation, 
+    useGetRolesQuery, 
+    useGetDepartmentsQuery 
+} from '../redux/slices/adminSlice';
+import { toast } from 'react-hot-toast';
+import { useEffect } from 'react';
 
 const AddUser = ({ isOpen = true }) => {
     const navigate = useNavigate();
-    const { addUser, allRoles, departments } = useApp();
+    const [addUser] = useAddUserMutation();
+    const { data: rolesData } = useGetRolesQuery();
+    const { data: deptsData } = useGetDepartmentsQuery();
+
+    const allRoles = rolesData?.roles || [];
+    const departments = deptsData?.departments || [];
+
     const onClose = () => navigate('/users');
     const [formData, setFormData] = useState({
         fullName: '',
@@ -20,10 +32,22 @@ const AddUser = ({ isOpen = true }) => {
         phone: '',
         password: '',
         confirmPassword: '',
-        role: allRoles.length > 0 ? allRoles[0].name : 'Staff Member',
-        department: departments.length > 0 ? departments[0].name : 'General',
+        role: '',
+        department: '',
         status: 'active'
     });
+
+    useEffect(() => {
+        if (allRoles.length > 0 && !formData.role) {
+            setFormData(prev => ({ ...prev, role: allRoles[0].name }));
+        }
+    }, [allRoles, formData.role]);
+
+    useEffect(() => {
+        if (departments.length > 0 && !formData.department) {
+            setFormData(prev => ({ ...prev, department: departments[0].name }));
+        }
+    }, [departments, formData.department]);
 
     if (!isOpen) return null;
 
@@ -62,8 +86,16 @@ const AddUser = ({ isOpen = true }) => {
                         </button>
                         <button
                             onClick={async () => {
-                                const success = await addUser(formData);
-                                if (success) onClose();
+                                if (formData.password !== formData.confirmPassword) {
+                                    return toast.error("Passwords do not match");
+                                }
+                                try {
+                                    await addUser(formData).unwrap();
+                                    toast.success('User created successfully');
+                                    onClose();
+                                } catch (err) {
+                                    toast.error(err.data?.message || 'Failed to create user');
+                                }
                             }}
                             className="px-8 py-3 rounded-2xl bg-linear-to-r from-purple-600 to-cyan-600 text-white font-black uppercase tracking-widest hover:brightness-110 shadow-lg shadow-purple-500/20 flex items-center gap-2 transition-all text-[10px]"
                         >

@@ -455,11 +455,13 @@ graph TD
 ---
 
 ## Technical Flow Summary
-1.  **Request**: User interacts with React Frontend.
-2.  **Authentication**: Middleware checks for valid JWT.
-3.  **Action**: Backend (Node/Express) processes business logic.
-4.  **Persistence**: Data is saved/retrieved from MongoDB.
-5.  **Feedback**: React updates state via `AppContext` and displays Toast notifications.
+1.  **Request**: User interacts with the React Frontend (Vite).
+2.  **State Management**: Redux Toolkit manages the global application state and user session.
+3.  **Authentication**: Middleware checks for valid JWT stored in a secure cookie.
+4.  **Data Fetching**: RTK Query handles all API communications with automated caching and invalidation.
+5.  **Action**: Backend (Node/Express) processes business logic and permission enforcement.
+6.  **Persistence**: Data is saved/retrieved from MongoDB.
+7.  **Feedback**: The UI updates dynamically via Redux selectors and displays real-time Toast notifications.
 
 ---
 

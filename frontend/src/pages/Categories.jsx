@@ -1,27 +1,43 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Package, Plus, Search, FolderPlus, MoreVertical, Edit2, Trash2 } from 'lucide-react';
+import { Package, FolderPlus, Edit2, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
-
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
-import { serverUrl } from '../App';
+import { serverUrl } from '../config/api';
+import { useGetCategoriesQuery, useDeleteCategoryMutation } from '../redux/slices/categorySlice';
+import { toast } from 'react-hot-toast';
 
 const Categories = () => {
     const navigate = useNavigate();
-    const { categories, deleteCategory } = useApp();
+    const { data: categoriesData, isLoading } = useGetCategoriesQuery();
+    const [deleteCategory] = useDeleteCategoryMutation();
+
+    const categories = categoriesData?.categories || [];
 
     const onAddClick = () => navigate('/add-category');
 
-    const handleDelete = (id, name) => {
+    const handleDelete = async (id, name) => {
         if (window.confirm(`Are you sure you want to delete the category "${name}"?`)) {
-            deleteCategory(id);
+            try {
+                await deleteCategory(id).unwrap();
+                toast.success('Category deleted successfully');
+            } catch (error) {
+                toast.error(error.data?.message || 'Failed to delete category');
+            }
         }
     };
 
     const handleEdit = (category) => {
         navigate('/add-category', { state: { editCategory: category } });
     };
+
+    if (isLoading) {
+        return (
+            <div className="p-6 flex items-center justify-center min-h-[60vh]">
+                <div className="text-slate-500 font-bold animate-pulse uppercase tracking-[0.2em] text-xs">Accessing Category Metadata...</div>
+            </div>
+        );
+    }
 
     return (
         <motion.div

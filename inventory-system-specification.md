@@ -218,22 +218,31 @@ Global application control flags.
 
 ---
 
-## 2. STATE MANAGEMENT REQUIREMENTS
+## 2. STATE MANAGEMENT & API ARCHITECTURE
 
-### Frontend State (AppContext)
-Global state handles the following variables:
-- `user`: Currently logged-in user object.
-- `inventory`: Array of retrieved product objects.
-- `categories`: Metadata for product classification.
-- `orders`: Transaction history list.
-- `suppliers`: Vendor registry list.
-- `requests`: Pending access requests (Admin only).
+### Redux Toolkit (RTK) Global Store
+Enterprise-grade state management replacing legacy Context API for high-performance and data consistency.
 
-### Form Handling States
-For all "Add" pages (Product, User, Category, Role, Order, Supplier):
-- `formData`: Local state object representing the model fields.
-- `loading`: Boolean for submission feedback.
-- `error`: Validation feedback from backend.
+- **`authSlice`**: Manages `user` session, `token`, and `isAuthenticated` status. Persisted via `redux-persist`.
+- **`uiSlice`**: Manages application-wide UI states including `modals` (Add Product, Stock Adjust), `sidebar` toggle, and `activeTab`.
+- **`productSlice`**: Manages inventory filters, search queries, and local pagination state.
+
+### RTK Query (API Slices)
+Automated data fetching with centralized caching, invalidation logic, and optimized polling.
+
+| Slice | Module Access | Invalidation Tags |
+| :--- | :--- | :--- |
+| `authApi` | Login, Register, Request Access, User Profile | `['User']` |
+| `productApi` | Products, Stock Levels, Metadata | `['Products']` |
+| `orderApi` | Sales, Transactions, Status Updates | `['Orders']` |
+| `reportApi` | Analytics, Trends, Summary Stats | `['Reports']` |
+| `settingsApi` | System Settings, Infrastructure Stats | `['Settings']` |
+| `activityApi` | Audit Logs, Global Activity Stream | `['Activity']` |
+
+### Cache Invalidation Patterns
+- **Mutations** (Add/Edit/Delete): Trigger specific tag invalidations to force UI synchronization.
+- **Polling**: High-frequency modules (Dashboard Stats) use 30s polling intervals.
+- **Optimistic Updates**: Implemented on low-latency interactions (Stock Adjustment) for perceived speed.
 
 ---
 

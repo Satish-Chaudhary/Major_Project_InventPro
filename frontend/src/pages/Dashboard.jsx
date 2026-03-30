@@ -7,11 +7,62 @@ import {
 } from 'recharts';
 import { clsx } from 'clsx';
 
-import { useApp } from '../context/AppContext';
+import { useAppSelector } from '../redux/hooks';
+import { selectUser } from '../redux/slices/authSlice';
+import { useGetSummaryReportQuery } from '../redux/slices/reportSlice';
+import { useGetProductsQuery } from '../redux/slices/productSlice';
+import { getStatusBadge } from '../utils/statusBadges';
+import { useGetActivitiesQuery } from '../redux/slices/activitySlice';
 
 const Dashboard = () => {
-    const { dashboardData } = useApp();
-    const { stats, stockTrendData, categoryData, recentActivity, inventory, getStatusBadge } = dashboardData;
+    const user = useAppSelector(selectUser);
+    const { data: summaryResponse, isLoading: summaryLoading } = useGetSummaryReportQuery();
+    const { data: productsResponse, isLoading: productsLoading } = useGetProductsQuery();
+    const { data: activityData } = useGetActivitiesQuery({ limit: 4 });
+    const auditLogs = activityData?.activities || [];
+
+    const summaryData = summaryResponse?.data;
+    const inventory = productsResponse?.products || [];
+
+    if (summaryLoading || productsLoading) {
+        return (
+            <div className="p-6 flex items-center justify-center min-h-[60vh]">
+                <div className="text-slate-500 font-bold animate-pulse">Synchronizing Dashboard Intelligence...</div>
+            </div>
+        );
+    }
+
+    const stats = [
+        { label: 'Total Products', value: (summaryData?.productCount || 0).toString(), icon: Package, trend: '+12.5%', color: 'text-purple-400' },
+        { label: 'Low Stock Items', value: (summaryData?.stockStatus?.low || 0).toString(), icon: AlertTriangle, trend: 'Needs attention', color: 'text-amber-400' },
+        { label: 'Purchases Volume', value: `$${(summaryData?.totalPurchases || 0).toLocaleString()}`, icon: Package, trend: 'Real-time', color: 'text-cyan-400' },
+        { label: 'Total Revenue', value: `$${(summaryData?.totalSales || 0).toLocaleString()}`, icon: TrendingUp, trend: 'Net Balance', color: 'text-emerald-400' },
+    ];
+
+    const stockTrendData = [
+        { month: 'Jan', stock: (summaryData?.totalPurchases || 240) * 0.1, sold: (summaryData?.totalSales || 120) * 0.1 },
+        { month: 'Feb', stock: (summaryData?.totalPurchases || 280) * 0.2, sold: (summaryData?.totalSales || 145) * 0.2 },
+        { month: 'Mar', stock: (summaryData?.totalPurchases || 220) * 0.4, sold: (summaryData?.totalSales || 180) * 0.3 },
+        { month: 'Apr', stock: (summaryData?.totalPurchases || 310) * 0.3, sold: (summaryData?.totalSales || 160) * 0.5 },
+        { month: 'May', stock: (summaryData?.totalPurchases || 290) * 0.6, sold: (summaryData?.totalSales || 195) * 0.7 },
+        { month: 'Jun', stock: (summaryData?.totalPurchases || 350) * 0.8, sold: (summaryData?.totalSales || 210) * 0.9 },
+    ];
+
+    const categoryData = [
+        { name: 'Electronics', value: summaryData?.stockStatus?.ok || 45, color: '#8b5cf6' },
+        { name: 'Infrastructure', value: summaryData?.stockStatus?.low || 25, color: '#06b6d4' },
+        { name: 'Logistics', value: summaryData?.stockStatus?.out || 20, color: '#ef4444' },
+        { name: 'Other', value: 10, color: '#f59e0b' },
+    ];
+
+    const recentActivity = (auditLogs || []).slice(0, 4).map(log => ({
+        id: log._id,
+        action: log.action,
+        item: log.module,
+        user: log.userId?.fullName || 'User',
+        time: new Date(log.createdAt).toLocaleTimeString(),
+        type: log.action.toLowerCase().includes('delete') ? 'danger' : log.action.toLowerCase().includes('update') ? 'warning' : 'success'
+    }));
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}

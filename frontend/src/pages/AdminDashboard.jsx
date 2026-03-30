@@ -1,36 +1,56 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { 
-    Activity, Globe, Cpu, ShieldAlert, Zap, 
-    MonitorSmartphone, Server, Database, Clock, 
-    RefreshCcw, MoreHorizontal, TrendingUp 
+import {
+    Activity, Globe, Cpu, ShieldAlert, Zap,
+    MonitorSmartphone, Server, Database, Clock,
+    RefreshCcw, MoreHorizontal
 } from 'lucide-react';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { clsx } from 'clsx';
-import { useApp } from '../context/AppContext';
+import { Package, AlertTriangle, TrendingUp } from 'lucide-react';
+import { motion } from 'framer-motion'
+import { useGetSummaryReportQuery, useGetSalesPerformanceQuery } from '../redux/slices/reportSlice';
+import { useGetActivitiesQuery } from '../redux/slices/activitySlice';
+import { useGetSystemStatsQuery } from '../redux/slices/settingsSlice';
+import { format } from 'date-fns';
 
 const AdminDashboard = () => {
-    const { dashboardData } = useApp();
-    const { stats } = dashboardData;
+    const { data: summaryData } = useGetSummaryReportQuery();
+    const { data: activityData } = useGetActivitiesQuery({ limit: 4 });
+    const { data: statsData } = useGetSystemStatsQuery();
+    const { data: salesPerformance } = useGetSalesPerformanceQuery({ period: 'today' });
 
-    // Sample data for the admin chart
-    const chartData = [
-        { name: '00:00', value: 400 },
-        { name: '04:00', value: 300 },
-        { name: '08:00', value: 600 },
-        { name: '12:00', value: 800 },
-        { name: '16:00', value: 500 },
-        { name: '20:00', value: 700 },
-        { name: '23:59', value: 600 },
+    const stats = [
+        { label: 'Total Products', value: (summaryData?.inventory?.total || 0).toString(), trend: '+12%', icon: Package, color: 'text-purple-400', bg: 'bg-purple-500/10' },
+        { label: 'Low Stock', value: (summaryData?.inventory?.lowStock || 0).toString(), trend: 'Stable', icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-500/10' },
+        { label: 'Pending Orders', value: (summaryData?.orders?.pending || 0).toString(), trend: 'Active', icon: Package, color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
+        { label: 'Total Revenue', value: `$${(summaryData?.revenue?.total || 0).toLocaleString()}`, trend: '+5%', icon: TrendingUp, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
     ];
 
-    const activityLogs = [
-        { id: 1, user: 'Admin Alpha', action: 'Modified System Perimeter', time: '2m ago', type: 'security' },
-        { id: 2, user: 'System Bot', action: 'Automatic Node Rebalancing', time: '15m ago', type: 'sync' },
-        { id: 3, user: 'Root User', action: 'Elevated Manager Privileges', time: '1h ago', type: 'auth' },
-        { id: 4, user: 'Security Scan', action: 'No Vulnerabilities Found', time: '3h ago', type: 'grant' },
+    // Chart data mapping
+    const chartData = salesPerformance?.hourly?.map(point => ({
+        name: point.hour,
+        value: point.revenue
+    })) || [
+            { name: '08:00', value: 400 },
+            { name: '12:00', value: 800 },
+            { name: '16:00', value: 500 },
+            { name: '20:00', value: 700 }
+        ];
+
+    const activityLogs = activityData?.activities?.map(act => ({
+        id: act._id,
+        user: act.user,
+        action: act.action,
+        time: format(new Date(act.createdAt), 'HH:mm'),
+        type: act.module === 'Security' ? 'security' : 'sync'
+    })) || [];
+
+    const sentinelNodes = [
+        { label: 'DB Sync Health', value: statsData?.dbHealth || 98.4, color: 'text-emerald-400', icon: Database },
+        { label: 'Network Stability', value: statsData?.networkHealth || 99.1, color: 'text-purple-400', icon: Activity },
+        { label: 'Node Reliability', value: statsData?.nodeHealth || 87.5, color: 'text-cyan-400', icon: Server },
+        { label: 'Global Latency', value: statsData?.latency || 24, color: 'text-amber-400', unit: 'ms', icon: Clock },
     ];
 
     return (
@@ -58,12 +78,7 @@ const AdminDashboard = () => {
 
             {/* Stats Grid - Matching Dashboard.jsx */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                    { label: 'System Reach', value: '48.2k', trend: '+12%', icon: Globe, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-                    { label: 'Resource Load', value: '14.5%', trend: '-2%', icon: Cpu, color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
-                    { label: 'Security Alerts', value: '02', trend: 'Stable', icon: ShieldAlert, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-                    { label: 'Daily Revenue', value: '$8.4k', trend: '+5%', icon: Zap, color: 'text-amber-400', bg: 'bg-amber-500/10' },
-                ].map((stat, idx) => (
+                {stats.map((stat, idx) => (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -112,12 +127,7 @@ const AdminDashboard = () => {
                 <div className="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-6 flex flex-col">
                     <h3 className="text-white font-bold mb-6 text-lg tracking-tight uppercase">System Sentinel</h3>
                     <div className="space-y-4 flex-1">
-                        {[
-                            { label: 'DB Sync Health', value: 98.4, color: 'text-emerald-400', icon: Database },
-                            { label: 'Network Stability', value: 99.1, color: 'text-purple-400', icon: Activity },
-                            { label: 'Node Reliability', value: 87.5, color: 'text-cyan-400', icon: Server },
-                            { label: 'Global Latency', value: 24, color: 'text-amber-400', unit: 'ms', icon: Clock },
-                        ].map((node, i) => (
+                        {sentinelNodes.map((node, i) => (
                             <div key={i} className="p-4 bg-slate-800/20 rounded-xl border border-transparent hover:border-slate-700/50 transition-all">
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-2">

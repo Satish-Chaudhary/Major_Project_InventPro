@@ -4,7 +4,7 @@ const ActivityLogSchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+        required: false
     },
     action: {
         type: String,
@@ -13,7 +13,7 @@ const ActivityLogSchema = new mongoose.Schema({
     module: {
         type: String,
         required: true,
-        enum: ['auth', 'inventory', 'users', 'roles', 'orders', 'suppliers', 'reports']
+        enum: ['auth', 'inventory', 'users', 'roles', 'orders', 'suppliers', 'reports', 'system', 'categories']
     },
     details: {
         type: mongoose.Schema.Types.Mixed

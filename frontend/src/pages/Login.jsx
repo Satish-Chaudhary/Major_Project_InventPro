@@ -7,15 +7,15 @@ import { ClipLoader } from 'react-spinners';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx'
 
-import { useApp } from '../context/AppContext';
-import { serverUrl } from '../App.jsx';
-import axios from 'axios';
+import { useAppDispatch, useAppSelector } from '../redux/hooks';
+import { login, selectAuthLoading } from '../redux/slices/authSlice';
 
 const Login = () => {
-    const { setIsLoggedIn, setUser } = useApp();
+    const dispatch = useAppDispatch();
+    const loading = useAppSelector(selectAuthLoading);
     const navigate = useNavigate();
     const location = useLocation();
-    
+
     // Check if we came from admin registration
     const [isFlipped, setIsFlipped] = useState(location.state?.isAdmin || false);
     const [showPassword, setShowPassword] = useState(false);
@@ -23,7 +23,6 @@ const Login = () => {
     // Form inputs
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (location.state?.isAdmin) {
@@ -33,19 +32,13 @@ const Login = () => {
 
     const handleLogin = async (e, type) => {
         e.preventDefault();
-        setLoading(true);
-        try {
-            const response = await axios.post(`${serverUrl}/api/auth/login`, { email, password }, { withCredentials: true });
-            if (response.data.success) {
-                setIsLoggedIn(true);
-                setUser(response.data.user);
-                toast.success(`Welcome back, ${response.data.user.fullName}!`);
-                navigate('/dashboard');
-            }
-        } catch (error) {
-            toast.error(error.response?.data?.message || "Login failed");
-        } finally {
-            setLoading(false);
+        const action = await dispatch(login({ email, password }));
+        if (login.fulfilled.match(action)) {
+            toast.success(`Welcome back, ${action.payload.user.fullName}!`);
+            navigate('/dashboard');
+        } else {
+            toast.error(action.payload?.message || "Login failed");
+            console.log(action.payload?.message);
         }
     };
 

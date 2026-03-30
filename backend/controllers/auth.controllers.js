@@ -5,6 +5,8 @@ import AccessRequest from '../models/accessRequest.model.js';
 import bcrypt from 'bcryptjs';
 import { sendAccessRequestEmail, sendApprovalEmail, sendRejectionEmail } from '../utils/email.utils.js';
 import { logActivity } from '../utils/logger.utils.js';
+import ActivityLog from '../models/activityLog.model.js';
+import mongoose from 'mongoose';
 
 // Admin Registration Controller (Max 2 Admins)
 export const adminRegister = async (req, res) => {
@@ -137,13 +139,16 @@ export const requestAccess = async (req, res) => {
     }
 }
 
-// Login Controller
+import Session from '../models/session.model.js';
+
+// Admin Registration Controller (Max 2 Admins)
 export const logIn = async (req, res) => {
     try {
         const { email, password } = req.body;
         const user = await User.findOne({ email });
 
         if (!user) {
+            await logActivity(null, `Failed login attempt (User not found)`, 'auth', { email }, req.ip);
             return res.status(400).json({
                 success: false,
                 message: 'User Not found'
@@ -153,6 +158,7 @@ export const logIn = async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (!isMatch) {
+            await logActivity(user._id, `Failed login attempt (Wrong password)`, 'auth', { email }, req.ip);
             return res.status(400).json({
                 success: false,
                 message: "Invalid Password"
@@ -188,12 +194,27 @@ export const logIn = async (req, res) => {
             sameSite: "Strict"
         })
 
+        // Create new session
+        const userAgent = req.headers['user-agent'] || 'Unknown';
+        
+        // Expire old active sessions for this user (optional security best practice)
+        await Session.updateMany({ userId: user._id, status: 'active' }, { status: 'expired', logoutAt: new Date() });
+
+        const session = await Session.create({
+            userId: user._id,
+            ipAddress: req.ip,
+            userAgent: userAgent,
+            status: 'active',
+            loginAt: new Date()
+        });
+
         // Log activity
-        await logActivity(user._id, `User logged in`, 'auth', {}, req.ip);
+        await logActivity(user._id, `User logged in`, 'auth', { sessionId: session._id }, req.ip);
 
         return res.status(200).json({
             success: true,
             message: "User Login Successfully",
+            token: token,
             user: {
                 id: user._id,
                 fullName: user.fullName,
@@ -214,7 +235,10 @@ export const logIn = async (req, res) => {
 // Get Current User Profile
 export const getMe = async (req, res) => {
     try {
-        // req.user is attached by authMiddleware
+        // Update session last activity
+        if (req.user) {
+             await Session.findOneAndUpdate({ userId: req.user._id, status: 'active' }, { lastActivity: new Date() }, { sort: { createdAt: -1 } });
+        }
         return res.status(200).json({
             success: true,
             user: req.user
@@ -230,6 +254,7 @@ export const logout = async (req, res) => {
     try {
         // Log activity
         if (req.user) {
+            await Session.findOneAndUpdate({ userId: req.user._id, status: 'active' }, { status: 'closed', logoutAt: new Date() }, { sort: { createdAt: -1 } });
             await logActivity(req.user._id, `User logged out`, 'auth', {}, req.ip);
         }
 
@@ -495,6 +520,30 @@ export const updateMe = async (req, res) => {
                 phone: user.phone,
                 role: user.role
             }
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// --- Security Audit Controllers ---
+
+export const getSecuritySummary = async (req, res) => {
+    try {
+        const activeSessions = await Session.find({ status: 'active' })
+            .populate('userId', 'fullName email role')
+            .sort({ lastActivity: -1 })
+            .limit(10);
+
+        const recentFailed = await ActivityLog.find({ 
+            module: 'auth', 
+            action: { $regex: /failed/i } 
+        }).populate('userId', 'fullName email role').sort({ createdAt: -1 }).limit(10);
+        
+        return res.status(200).json({
+            success: true,
+            activeSessions,
+            recentFailed
         });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });

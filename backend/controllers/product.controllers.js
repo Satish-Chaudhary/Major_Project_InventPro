@@ -8,6 +8,7 @@ export const addProduct = async (req, res) => {
     try {
         const {
             productName,
+            productId,
             productDescription,
             category,
             brand,
@@ -25,14 +26,18 @@ export const addProduct = async (req, res) => {
 
         // Check if SKU already exists
         const existingProduct = await Product.findOne({ skuId });
-        if (existingProduct) {
+        if (skuId && existingProduct) {
             return res.status(400).json({ success: false, message: "Product with this SKU already exists" });
         }
 
+        // Auto-generate Product ID if not provided
+        const generatedProductId = productId || `PRD-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 1000)}`;
+
         const newProduct = new Product({
             productName,
+            productId: generatedProductId,
             productDescription,
-            category, // This might need to be resolved to ObjectIds if passed as strings
+            category,
             brand,
             skuId,
             barcodeEAN,
@@ -61,18 +66,59 @@ export const addProduct = async (req, res) => {
     }
 };
 
-// @desc    Get all products
+// @desc    Get all products with pagination and filters
 // @route   GET /api/product/all
 // @access  Private
 export const getAllProducts = async (req, res) => {
     try {
-        const products = await Product.find();
+        const { page = 1, limit = 10, search = '', category = '', sort = 'createdAt', order = 'desc' } = req.query;
+        
+        const filter = {};
+        if (search) {
+            filter.$or = [
+                { productName: { $regex: search, $options: 'i' } },
+                { skuId: { $regex: search, $options: 'i' } },
+                { productId: { $regex: search, $options: 'i' } }
+            ];
+        }
+        if (category && category !== 'All') {
+            filter.category = category;
+        }
+
+        const skip = (page - 1) * limit;
+        const total = await Product.countDocuments(filter);
+        const products = await Product.find(filter)
+            .sort({ [sort]: order === 'desc' ? -1 : 1 })
+            .skip(skip)
+            .limit(Number(limit));
+
+        res.status(200).json({
+            success: true,
+            products,
+            total,
+            page: Number(page),
+            pages: Math.ceil(total / limit)
+        });
+    } catch (error) {
+        console.error("Error fetching products:", error);
+        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    }
+};
+
+// @desc    Get low stock products
+// @route   GET /api/product/low-stock
+// @access  Private
+export const getLowStockProducts = async (req, res) => {
+    try {
+        const products = await Product.find({
+            $expr: { $lte: ["$initialQty", "$lowStockThreshold"] }
+        });
         res.status(200).json({
             success: true,
             products
         });
     } catch (error) {
-        console.error("Error fetching products:", error);
+        console.error("Error fetching low stock products:", error);
         res.status(500).json({ success: false, message: "Server Error", error: error.message });
     }
 };
@@ -88,7 +134,7 @@ export const updateProduct = async (req, res) => {
         if (req.file) {
             updatedData.productImage = req.file.path;
         }
-        
+
         // Ensure numeric fields are converted (since Multipart/form-data sends everything as strings)
         if (updatedData.initialQty) updatedData.initialQty = Number(updatedData.initialQty);
         if (updatedData.lowStockThreshold) updatedData.lowStockThreshold = Number(updatedData.lowStockThreshold);
@@ -137,6 +183,58 @@ export const deleteProduct = async (req, res) => {
         });
     } catch (error) {
         console.error("Error deleting product:", error);
+        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    }
+};
+// @desc    Adjust product stock
+// @route   PATCH /api/product/adjust-stock/:id
+// @access  Private (Admin/Manager/Warehouse)
+export const adjustStock = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { adjustment, reason, notes } = req.body;
+
+        const product = await Product.findById(id);
+        if (!product) {
+            return res.status(404).json({ success: false, message: "Product not found" });
+        }
+
+        const oldQty = product.initialQty;
+        product.initialQty += Number(adjustment);
+
+        // Update status based on new quantity
+        if (product.initialQty <= 0) {
+            product.status = 'out of stock';
+        } else if (product.initialQty <= product.lowStockThreshold) {
+            product.status = 'low stock';
+        } else {
+            product.status = 'in stock';
+        }
+
+        await product.save();
+
+        // Log activity with details
+        await logActivity(
+            req.user._id, 
+            `Stock adjusted for ${product.productName}: ${adjustment > 0 ? '+' : ''}${adjustment} (Reason: ${reason})`, 
+            'inventory', 
+            { 
+                productId: product._id, 
+                oldQty, 
+                newQty: product.initialQty,
+                reason,
+                notes
+            }, 
+            req.ip
+        );
+
+        res.status(200).json({
+            success: true,
+            message: "Stock adjusted successfully",
+            product
+        });
+    } catch (error) {
+        console.error("Error adjusting stock:", error);
         res.status(500).json({ success: false, message: "Server Error", error: error.message });
     }
 };

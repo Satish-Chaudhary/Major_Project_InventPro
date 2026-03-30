@@ -10,11 +10,14 @@ import Reports from './pages/Reports';
 import Analytics from './pages/Analytics';
 import Orders from './pages/Orders';
 import Suppliers from './pages/Suppliers';
+import PurchaseOrders from './pages/PurchaseOrders';
+import AddPurchaseOrder from './pages/AddPurchaseOrder';
 import Settings from './pages/Settings';
 import UserProfile from './pages/UserProfile';
 import UserManagement from './pages/UserManagement';
 import UserApprovals from './pages/UserApprovals';
 import AuditLogs from './pages/AuditLogs';
+import Security from './pages/Security';
 import AddProduct from './pages/AddProduct';
 import AddCategory from './pages/AddCategory';
 import AdminRegister from './pages/AdminRegister';
@@ -22,12 +25,13 @@ import RequestAccess from './pages/RequestAccess';
 import ResetPassword from './pages/ResetPassword';
 import AddUser from './pages/AddUser';
 import AddOrder from './pages/AddOrder';
+import OrderDetails from './pages/OrderDetails';
 import AddSupplier from './pages/AddSupplier';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminRoles from './pages/AdminRoles';
 import AddRole from './pages/AddRole';
+import Unauthorized from './pages/Unauthorized';
 import MainLayout from './components/layout/MainLayout';
-import { useApp } from './context/AppContext.jsx';
 
 import { ClipLoader } from 'react-spinners';
 
@@ -36,22 +40,34 @@ const ProtectedRoute = ({ isLoggedIn, user, allowedRoles, children }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user?.role?.toLowerCase())) {
-    return <Navigate to="/dashboard" replace />;
+  const role = user?.role?.toLowerCase();
+
+  // Normalize roles to match PERMISSION_MATRIX keys if necessary
+  const normalizedRole = role === 'warehouse' ? 'warehouse staff' : role === 'sales' ? 'sales staff' : role;
+
+  if (allowedRoles && !allowedRoles.includes(normalizedRole)) {
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return children;
 };
-export const serverUrl = 'http://localhost:3000';
+import { serverUrl } from './config/api';
+
+import { useAppDispatch, useAppSelector } from './redux/hooks';
+import { fetchCurrentUser, selectIsAuthenticated, selectUser, selectAuthLoading } from './redux/slices/authSlice';
+import { selectModal } from './redux/slices/uiSlice';
+import { useEffect } from 'react';
 
 const App = () => {
-  const {
-    isLoggedIn,
-    login,
-    showAddModal,
-    authLoading,
-    user
-  } = useApp();
+  const dispatch = useAppDispatch();
+  const isLoggedIn = useAppSelector(selectIsAuthenticated);
+  const user = useAppSelector(selectUser);
+  const authLoading = useAppSelector(selectAuthLoading);
+  const productFormModal = useAppSelector(selectModal('productForm'));
+
+  useEffect(() => {
+    dispatch(fetchCurrentUser());
+  }, [dispatch]);
 
   if (authLoading) {
     return (
@@ -69,7 +85,7 @@ const App = () => {
       }} />
 
       <AddProduct
-        isOpen={showAddModal}
+        isOpen={productFormModal.isOpen}
       />
 
       <Routes>
@@ -78,12 +94,13 @@ const App = () => {
           path="/login"
           element={
             isLoggedIn ? <Navigate to="/dashboard" replace /> :
-              <Login onLogin={login} />
+              <Login />
           }
         />
         <Route path="/register-admin" element={<AdminRegister />} />
         <Route path="/request-access" element={<RequestAccess />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/unauthorized" element={<Unauthorized />} />
 
         {/* Protected Routes */}
         <Route element={
@@ -97,6 +114,11 @@ const App = () => {
           <Route path='/categories' element={
             <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin', 'manager', 'warehouse staff']}>
               <Categories />
+            </ProtectedRoute>
+          } />
+          <Route path='/security' element={
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin', 'root']}>
+              <Security />
             </ProtectedRoute>
           } />
           <Route path='/audit' element={<AuditLogs />} />
@@ -118,6 +140,16 @@ const App = () => {
           <Route path='/suppliers' element={
             <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin', 'manager', 'accountant']}>
               <Suppliers />
+            </ProtectedRoute>
+          } />
+          <Route path='/purchase-orders' element={
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin', 'manager', 'accountant', 'warehouse staff']}>
+              <PurchaseOrders />
+            </ProtectedRoute>
+          } />
+          <Route path='/create-po' element={
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin', 'manager', 'accountant']}>
+              <AddPurchaseOrder />
             </ProtectedRoute>
           } />
           <Route path='/settings' element={
@@ -149,6 +181,11 @@ const App = () => {
           <Route path='/add-order' element={
             <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin', 'manager', 'sales staff']}>
               <AddOrder />
+            </ProtectedRoute>
+          } />
+          <Route path='/order/:id' element={
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin', 'manager', 'sales staff', 'warehouse staff']}>
+              <OrderDetails />
             </ProtectedRoute>
           } />
           <Route path='/add-supplier' element={

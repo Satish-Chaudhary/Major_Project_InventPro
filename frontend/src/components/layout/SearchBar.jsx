@@ -1,9 +1,11 @@
 import { Search } from 'lucide-react'
 
-import { useApp } from '../../context/AppContext';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
+import { selectSearchQuery, setSearchQuery } from '../../redux/slices/uiSlice';
 
 const SearchBar = () => {
-    const { searchQuery, setSearchQuery } = useApp();
+    const dispatch = useAppDispatch();
+    const searchQuery = useAppSelector(selectSearchQuery);
 
     return (
         <div className="relative group">
@@ -11,7 +13,7 @@ const SearchBar = () => {
             <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => dispatch(setSearchQuery(e.target.value))}
                 placeholder="Search products, orders..."
                 className="bg-slate-900/50 border border-slate-800 rounded-lg pl-10 pr-4 py-2 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-purple-500/50 w-72 focus:ring-4 focus:ring-purple-500/10 transition-all"
             />

@@ -8,11 +8,13 @@ import {
     Settings, Package, MoreVertical, FolderPlus
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
+import { useGetRolesQuery, useDeleteRoleMutation } from '../redux/slices/adminSlice';
 import { clsx } from 'clsx';
 const AdminRoles = () => {
     const navigate = useNavigate();
-    const { allRoles, deleteRole } = useApp();
+    const { data: rolesData, isLoading } = useGetRolesQuery();
+    const [deleteRole] = useDeleteRoleMutation();
+    const allRoles = rolesData?.roles || [];
     const [searchQuery, setSearchQuery] = useState('');
     const [activeMenu, setActiveMenu] = useState(null);
 

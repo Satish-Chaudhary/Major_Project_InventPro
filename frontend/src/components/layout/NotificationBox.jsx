@@ -1,13 +1,23 @@
 import { motion } from 'framer-motion';
 import { clsx } from 'clsx';
 import { AlertTriangle, CheckCircle, Package } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
+import { useGetActivitiesQuery } from '../../redux/slices/activitySlice';
+import { selectLastReadAuditTime, clearAuditNotifications } from '../../redux/slices/uiSlice';
 import { useNavigate } from 'react-router-dom';
 
 const NotificationBox = ({ setShowNotifications }) => {
-    const { notifications, clearNotifications } = useApp();
+    const dispatch = useAppDispatch();
+    const { data: activityData } = useGetActivitiesQuery({ limit: 10 });
+    const auditLogs = activityData?.activities || [];
+    const lastReadTime = useAppSelector(selectLastReadAuditTime);
+    const notifications = auditLogs.filter(log => new Date(log.createdAt).getTime() > lastReadTime);
+
+    const handleClear = () => {
+        dispatch(clearAuditNotifications());
+    };
     const navigate = useNavigate();
-    
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -17,8 +27,8 @@ const NotificationBox = ({ setShowNotifications }) => {
         >
             <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
                 <h3 className="text-white font-semibold text-sm tracking-tight">Notifications</h3>
-                <button 
-                    onClick={clearNotifications}
+                <button
+                    onClick={handleClear}
                     className="text-[10px] text-purple-400 hover:text-purple-300 font-bold uppercase tracking-widest transition-all hover:scale-105 active:scale-95"
                 >
                     Mark as read
@@ -52,7 +62,7 @@ const NotificationBox = ({ setShowNotifications }) => {
                 )}
             </div>
             <div className="p-3 text-center bg-slate-900/50 border-t border-slate-800">
-                <button 
+                <button
                     onClick={() => {
                         navigate('/audit');
                         setShowNotifications(false);

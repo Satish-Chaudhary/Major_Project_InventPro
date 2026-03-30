@@ -11,7 +11,13 @@ import {
 import { clsx } from 'clsx';
 
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
+import { 
+    useGetUsersQuery, 
+    useGetRolesQuery, 
+    useDeleteUserMutation,
+    useDeleteRoleMutation 
+} from '../redux/slices/adminSlice';
+import { getStatusBadge } from '../utils/badgeStyles.jsx';
 
 const permissionDescriptions = {
     'create_product': 'Allows creating new inventory items',
@@ -27,7 +33,13 @@ const permissionDescriptions = {
 
 const UserManagement = () => {
     const navigate = useNavigate();
-    const { users, allRoles, auditLogs, deleteAdminUser, getStatusBadge, deleteRole } = useApp();
+    const { data: usersData, isLoading: usersLoading } = useGetUsersQuery();
+    const { data: rolesData } = useGetRolesQuery();
+    const [deleteUser] = useDeleteUserMutation();
+    const [deleteRole] = useDeleteRoleMutation();
+
+    const users = usersData?.users || [];
+    const allRoles = rolesData?.roles || [];
     const onAddClick = () => navigate('/add-user');
     const [activeSubTab, setActiveSubTab] = useState('all-users');
     const [searchQuery, setSearchQuery] = useState('');
@@ -177,7 +189,7 @@ const UserManagement = () => {
                                                     <button className="p-2 text-slate-500 hover:text-cyan-400 hover:bg-cyan-400/10 rounded-lg transition-all"><Edit2 className="w-4 h-4" /></button>
                                                     <button
                                                         onClick={() => {
-                                                            if (window.confirm('Delete this user?')) deleteAdminUser(u._id);
+                                                            if (window.confirm('Delete this user?')) deleteUser(u._id);
                                                         }}
                                                         className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
                                                     >

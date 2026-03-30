@@ -2,12 +2,30 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Package, X, Upload, Info, Check } from 'lucide-react';
 
-import { useApp } from '../context/AppContext';
-import { serverUrl } from '../App';
+import { serverUrl } from '../config/api';
 
-const AddProduct = ({ isOpen, editProduct }) => {
-    const { setShowAddModal, addProduct, updateProduct, categories } = useApp();
-    const onClose = () => setShowAddModal(false);
+import { useAppDispatch, useAppSelector } from '../redux/hooks';
+import { closeModal, selectModal } from '../redux/slices/uiSlice';
+import { 
+    useCreateProductMutation, 
+    useUpdateProductMutation 
+} from '../redux/slices/productSlice';
+import { useGetCategoriesQuery } from '../redux/slices/categorySlice';
+import { toast } from 'react-hot-toast';
+
+const AddProduct = ({ isOpen: propIsOpen, editProduct: propEditProduct }) => {
+    const dispatch = useAppDispatch();
+    const modalState = useAppSelector(selectModal('productForm'));
+    const { data: categoriesData } = useGetCategoriesQuery();
+    
+    const isOpen = propIsOpen !== undefined ? propIsOpen : modalState.isOpen;
+    const editProduct = propEditProduct !== undefined ? propEditProduct : modalState.product;
+    const categories = categoriesData?.categories || [];
+
+    const [createProduct, { isLoading: isCreating }] = useCreateProductMutation();
+    const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
+
+    const onClose = () => dispatch(closeModal('productForm'));
 
     // Internal state for form remains here as it's local to the form
     const [formData, setFormData] = useState({
@@ -74,29 +92,41 @@ const AddProduct = ({ isOpen, editProduct }) => {
         }
     };
 
-    const handleSave = () => {
-        const productData = {
-            productName: formData.name,
-            productDescription: formData.description,
-            category: formData.category,
-            brand: formData.brand,
-            skuId: formData.sku,
-            barcodeEAN: formData.barcodeEAN || '',
-            initialQty: formData.initialQuantity || 0,
-            lowStockThreshold: formData.lowStockThreshold || 10,
-            basePrice: formData.basePrice || 0,
-            costPrice: formData.costPrice || 0,
-            tax: formData.taxRate || 0,
-            productImage: formData.imageFile || formData.productImage, // Send file if exists, else existing URL/path
-            status: formData.status
-        };
+    const handleSave = async () => {
+        const productFormData = new FormData();
+        productFormData.append('productName', formData.name);
+        productFormData.append('productDescription', formData.description);
+        productFormData.append('category', formData.category);
+        productFormData.append('brand', formData.brand);
+        productFormData.append('skuId', formData.sku);
+        productFormData.append('barcodeEAN', formData.barcodeEAN || '');
+        productFormData.append('initialQty', formData.initialQuantity || 0);
+        productFormData.append('lowStockThreshold', formData.lowStockThreshold || 10);
+        productFormData.append('basePrice', formData.basePrice || 0);
+        productFormData.append('costPrice', formData.costPrice || 0);
+        productFormData.append('tax', formData.taxRate || 0);
+        productFormData.append('status', formData.status);
 
-        if (editProduct) {
-            updateProduct({ ...productData, _id: editProduct._id });
-        } else {
-            addProduct(productData);
+        if (formData.imageFile) {
+            productFormData.append('productImage', formData.imageFile);
+        } else if (formData.productImage && !formData.productImage.startsWith('blob:')) {
+            // Keep existing image if no new file is selected and it's not a preview blob
+            productFormData.append('productImage', formData.productImage);
         }
-        onClose();
+
+        try {
+            let result;
+            if (editProduct) {
+                result = await updateProduct({ id: editProduct._id, body: productFormData }).unwrap();
+                toast.success('Product updated successfully');
+            } else {
+                result = await createProduct(productFormData).unwrap();
+                toast.success('Product added successfully');
+            }
+            onClose();
+        } catch (error) {
+            toast.error(error.data?.message || 'Failed to save product');
+        }
     };
 
     return (

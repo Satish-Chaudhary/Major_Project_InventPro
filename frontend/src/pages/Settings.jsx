@@ -7,8 +7,43 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
+import { useGetSettingsQuery, useUpdateSettingsMutation, useGetSystemStatsQuery } from '../redux/slices/settingsSlice';
+import { toast } from 'react-hot-toast';
+
 const Settings = () => {
+    const { data: settingsData, isLoading } = useGetSettingsQuery();
+    const { data: statsData } = useGetSystemStatsQuery();
+    const [updateSettings] = useUpdateSettingsMutation();
+    
     const [activeSettingsTab, setActiveSettingsTab] = useState('general');
+    const [formData, setFormData] = useState({
+        companyName: '',
+        supportEmail: '',
+        companyAddress: '',
+        language: 'English (US)',
+        currency: 'USD ($)'
+    });
+
+    useEffect(() => {
+        if (settingsData) {
+            setFormData({
+                companyName: settingsData.companyName || '',
+                supportEmail: settingsData.supportEmail || '',
+                companyAddress: settingsData.companyAddress || '',
+                language: settingsData.language || 'English (US)',
+                currency: settingsData.currency || 'USD ($)'
+            });
+        }
+    }, [settingsData]);
+
+    const handleSave = async () => {
+        try {
+            await updateSettings(formData).unwrap();
+            toast.success('Settings updated successfully!');
+        } catch (error) {
+            toast.error(error.data?.message || 'Update failed');
+        }
+    };
 
     const tabs = [
         { id: 'general', label: 'General', icon: Building2 },
@@ -28,7 +63,10 @@ const Settings = () => {
                     <h2 className="text-2xl font-bold text-white tracking-tight">System Settings</h2>
                     <p className="text-slate-400 text-sm mt-1">Configure your organization and system wide defaults.</p>
                 </div>
-                <button className="flex items-center gap-2 bg-linear-to-r from-purple-600 to-cyan-600 text-white px-6 py-2.5 rounded-xl hover:brightness-110 transition-all font-bold text-sm shadow-xl shadow-purple-500/20 active:scale-95">
+                <button 
+                    onClick={handleSave}
+                    className="flex items-center gap-2 bg-linear-to-r from-purple-600 to-cyan-600 text-white px-6 py-2.5 rounded-xl hover:brightness-110 transition-all font-bold text-sm shadow-xl shadow-purple-500/20 active:scale-95"
+                >
                     <Save className="w-4 h-4" />
                     Save Changes
                 </button>
@@ -74,15 +112,33 @@ const Settings = () => {
                                 <div className="grid grid-cols-2 gap-6 pt-4">
                                     <div className="space-y-2">
                                         <label className="text-slate-500 text-[10px] font-bold uppercase tracking-widest ml-1">Company Name</label>
-                                        <input type="text" defaultValue="Nexus Inventory Systems" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-purple-500/50 transition-all focus:ring-4 focus:ring-purple-500/5 focus:outline-none" />
+                                        <input 
+                                            type="text" 
+                                            value={formData.companyName} 
+                                            onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                                            placeholder="Nexus Inventory Systems" 
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-purple-500/50 transition-all focus:ring-4 focus:ring-purple-500/5 focus:outline-none" 
+                                        />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-slate-500 text-[10px] font-bold uppercase tracking-widest ml-1">Support Email</label>
-                                        <input type="email" defaultValue="support@nexus.com" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-purple-500/50 transition-all focus:ring-4 focus:ring-purple-500/5 focus:outline-none" />
+                                        <input 
+                                            type="email" 
+                                            value={formData.supportEmail} 
+                                            onChange={(e) => setFormData({ ...formData, supportEmail: e.target.value })}
+                                            placeholder="support@nexus.com" 
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-purple-500/50 transition-all focus:ring-4 focus:ring-purple-500/5 focus:outline-none" 
+                                        />
                                     </div>
                                     <div className="col-span-2 space-y-2">
                                         <label className="text-slate-500 text-[10px] font-bold uppercase tracking-widest ml-1">Company Address</label>
-                                        <input type="text" defaultValue="123 Business Parkway, Suite 100, Tech City, CA 94000" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-purple-500/50" />
+                                        <input 
+                                            type="text" 
+                                            value={formData.companyAddress} 
+                                            onChange={(e) => setFormData({ ...formData, companyAddress: e.target.value })}
+                                            placeholder="123 Business Parkway, Tech City" 
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-purple-500/50" 
+                                        />
                                     </div>
                                 </div>
                             </section>
@@ -101,7 +157,11 @@ const Settings = () => {
                                 <div className="grid grid-cols-2 gap-6 pt-4">
                                     <div className="space-y-2">
                                         <label className="text-slate-500 text-[10px] font-bold uppercase tracking-widest ml-1">System Language</label>
-                                        <select className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500/50 cursor-pointer">
+                                        <select 
+                                            value={formData.language}
+                                            onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500/50 cursor-pointer"
+                                        >
                                             <option>English (US)</option>
                                             <option>Spanish (ES)</option>
                                             <option>French (FR)</option>
@@ -109,7 +169,11 @@ const Settings = () => {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-slate-500 text-[10px] font-bold uppercase tracking-widest ml-1">Default Currency</label>
-                                        <select className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500/50 cursor-pointer">
+                                        <select 
+                                            value={formData.currency}
+                                            onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500/50 cursor-pointer"
+                                        >
                                             <option>USD ($)</option>
                                             <option>EUR (€)</option>
                                             <option>GBP (£)</option>
@@ -167,10 +231,15 @@ const Settings = () => {
                             <p className="text-xs text-slate-400 leading-relaxed font-medium">All sensitive information is encrypted with AES-256 standards before being stored in our obsidian layer.</p>
                             <div className="flex items-center justify-between text-xs font-bold pt-2">
                                 <span className="text-slate-500 uppercase tracking-widest">Database Usage</span>
-                                <span className="text-white">42.8 GB / 100 GB</span>
+                                <span className="text-white">
+                                    {statsData?.dbUsage || '0.0 GB'} / {statsData?.dbLimit || '100 GB'}
+                                </span>
                             </div>
                             <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                <div className="w-[42%] h-full bg-linear-to-r from-purple-500 to-cyan-500 shadow-[0_0_10px_rgba(168,85,247,0.3)]" />
+                                <div 
+                                    className="h-full bg-linear-to-r from-purple-500 to-cyan-500 shadow-[0_0_10px_rgba(168,85,247,0.3)] transition-all duration-1000" 
+                                    style={{ width: `${(parseFloat(statsData?.dbUsage) / parseFloat(statsData?.dbLimit)) * 100 || 0}%` }}
+                                />
                             </div>
                         </div>
                     </section>

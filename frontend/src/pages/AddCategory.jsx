@@ -7,13 +7,23 @@ import {
 import { clsx } from 'clsx';
 
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
-import { serverUrl } from '../App';
+import { serverUrl } from '../config/api';
+
+import { 
+    useCreateCategoryMutation, 
+    useUpdateCategoryMutation,
+    useGetCategoriesQuery
+} from '../redux/slices/categorySlice';
+import { toast } from 'react-hot-toast';
 
 const AddCategory = ({ isOpen = true }) => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { addCategory, updateCategory, categories } = useApp();
+    const { data: categoriesData } = useGetCategoriesQuery();
+    const [createCategory, { isLoading: isCreating }] = useCreateCategoryMutation();
+    const [updateCategory, { isLoading: isUpdating }] = useUpdateCategoryMutation();
+
+    const categories = categoriesData?.categories || [];
     const onClose = () => navigate('/categories');
 
     // Check if we are in edit mode based on state passed via navigation
@@ -54,21 +64,33 @@ const AddCategory = ({ isOpen = true }) => {
         }
     };
 
-    const handleSave = () => {
-        const categoryData = {
-            catName: formData.catName,
-            description: formData.description,
-            status: formData.status,
-            parent: formData.parent === '' ? null : formData.parent,
-            thumbnail: formData.imageFile || formData.thumbnail
-        };
-
-        if (editCategory) {
-            updateCategory({ ...categoryData, _id: editCategory._id });
-        } else {
-            addCategory(categoryData);
+    const handleSave = async () => {
+        const categoryFormData = new FormData();
+        categoryFormData.append('catName', formData.catName);
+        categoryFormData.append('description', formData.description);
+        categoryFormData.append('status', formData.status);
+        if (formData.parent) {
+            categoryFormData.append('parent', formData.parent);
         }
-        onClose();
+
+        if (formData.imageFile) {
+            categoryFormData.append('thumbnail', formData.imageFile);
+        } else if (formData.thumbnail && !formData.thumbnail.startsWith('blob:')) {
+            categoryFormData.append('thumbnail', formData.thumbnail);
+        }
+
+        try {
+            if (editCategory) {
+                await updateCategory({ id: editCategory._id, body: categoryFormData }).unwrap();
+                toast.success('Category updated successfully');
+            } else {
+                await createCategory(categoryFormData).unwrap();
+                toast.success('Category added successfully');
+            }
+            onClose();
+        } catch (error) {
+            toast.error(error.data?.message || 'Failed to save category');
+        }
     };
 
     return (

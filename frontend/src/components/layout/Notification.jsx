@@ -1,10 +1,11 @@
 import { Bell } from 'lucide-react'
 import { clsx } from 'clsx';
-
-import { useApp } from '../../context/AppContext';
+import { useGetNotificationsQuery } from '../../redux/slices/notificationSlice';
 
 const Notification = ({ setShowNotifications, showNotifications }) => {
-    const { notifications } = useApp();
+    const { data: notificationData } = useGetNotificationsQuery();
+    const notifications = notificationData?.notifications || [];
+
     return (
         <>
             <button

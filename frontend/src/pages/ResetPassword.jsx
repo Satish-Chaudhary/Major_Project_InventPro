@@ -10,7 +10,7 @@ import { clsx } from 'clsx';
 import InventProLogo from '../components/layout/InventProLogo';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { serverUrl } from '../App';
+import { serverUrl } from '../config/api';
 
 const ResetPassword = () => {
     const navigate = useNavigate();

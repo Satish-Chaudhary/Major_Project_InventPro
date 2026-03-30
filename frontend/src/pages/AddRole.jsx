@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
     Shield, Briefcase, Check, X, 
@@ -6,13 +6,20 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
-import { useEffect } from 'react';
+import { 
+    useAddRoleMutation, 
+    useUpdateRoleMutation, 
+    useAddDepartmentMutation 
+} from '../redux/slices/adminSlice';
+import { toast } from 'react-hot-toast';
 
 const AddRole = ({ isOpen = true }) => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { addRole, updateRole, addDepartment } = useApp();
+
+    const [addRole] = useAddRoleMutation();
+    const [updateRole] = useUpdateRoleMutation();
+    const [addDepartment] = useAddDepartmentMutation();
     const onClose = () => navigate('/roles');
 
     const editRole = location.state?.editRole;
@@ -63,20 +70,31 @@ const AddRole = ({ isOpen = true }) => {
         }
     };
 
-    const handleRoleSubmit = (e) => {
+    const handleRoleSubmit = async (e) => {
         e.preventDefault();
-        if (isEditing) {
-            updateRole(roleForm);
-        } else {
-            addRole(roleForm);
+        try {
+            if (isEditing) {
+                await updateRole({ id: roleForm._id, ...roleForm }).unwrap();
+                toast.success('Role updated successfully');
+            } else {
+                await addRole(roleForm).unwrap();
+                toast.success('Role created successfully');
+            }
+            onClose();
+        } catch (err) {
+            toast.error(err.data?.message || 'Failed to fix role configuration');
         }
-        onClose();
     };
 
-    const handleDeptSubmit = (e) => {
+    const handleDeptSubmit = async (e) => {
         e.preventDefault();
-        addDepartment(deptForm);
-        onClose();
+        try {
+            await addDepartment(deptForm).unwrap();
+            toast.success('Department created successfully');
+            onClose();
+        } catch (err) {
+            toast.error(err.data?.message || 'Failed to deploy department');
+        }
     };
 
     if (!isOpen) return null;

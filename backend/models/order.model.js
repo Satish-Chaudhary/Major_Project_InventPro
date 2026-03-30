@@ -6,9 +6,16 @@ const OrderSchema = new mongoose.Schema({
     time: { type: String },
     type: { type: String, enum: ['inward', 'outward'] },
     entity: { type: String }, // Supplier name or Customer name
-    items: { type: String },
-    value: { type: String },
-    status: { type: String, enum: ['completed', 'processing', 'pending'], default: 'pending' }
+    items: [{
+        productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+        name: { type: String },
+        quantity: { type: Number },
+        price: { type: Number },
+        total: { type: Number }
+    }],
+    itemSummary: { type: String }, // Store the old string summary for compatibility
+    value: { type: Number },
+    status: { type: String, enum: ['completed', 'processing', 'pending', 'confirmed', 'shipped', 'delivered', 'cancelled'], default: 'pending' }
 }, { timestamps: true });
 
 const Order = mongoose.model("Order", OrderSchema);

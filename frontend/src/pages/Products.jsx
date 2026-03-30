@@ -1,56 +1,69 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Download, Edit2, Trash2, Package, Check, RotateCcw } from 'lucide-react';
+import { Search, Plus, Download, Edit2, Trash2, Package, Check, RotateCcw, Settings } from 'lucide-react';
 import { clsx } from 'clsx';
+import { toast } from 'react-hot-toast'
+import { serverUrl } from '../config/api';
+import AdjustStockModal from './AdjustStockModal';
+import { useDeleteWithConfirm } from '../hooks/useDeleteWithConfirm';
+import { exportToCSV } from '../utils/exportUtils';
 
-import { useApp } from '../context/AppContext';
-import { serverUrl } from '../App';
-import AddProduct from './AddProduct';
+import { useAppDispatch, useAppSelector } from '../redux/hooks';
+import {
+    selectProductFilters,
+    setFilters,
+    resetFilters,
+    useGetProductsQuery,
+    useDeleteProductMutation,
+    useDeleteMultipleProductsMutation
+} from '../redux/slices/productSlice';
+import { useGetCategoriesQuery } from '../redux/slices/categorySlice';
+import { openModal } from '../redux/slices/uiSlice';
+import { selectUser } from '../redux/slices/authSlice';
+import { getStatusBadge } from '../utils/statusBadges';
 
 const ProductsList = () => {
-    const { inventory, categories, getStatusBadge, deleteProduct, deleteMultipleProducts, setShowAddModal, showAddModal, user } = useApp();
+    const dispatch = useAppDispatch();
+    const user = useAppSelector(selectUser);
+    const filters = useAppSelector(selectProductFilters);
     const userRole = user?.role?.toLowerCase();
+    const confirmDelete = useDeleteWithConfirm();
+
+    const { data: productsData, isLoading, isFetching } = useGetProductsQuery(filters);
+    const { data: categoriesData } = useGetCategoriesQuery();
+    const [deleteProduct] = useDeleteProductMutation();
+
+    const inventory = productsData?.products || [];
+    const inventoryStats = {
+        total: productsData?.total || 0,
+        page: productsData?.page || 1,
+        pages: productsData?.pages || 1
+    };
+    const categories = categoriesData?.categories || [];
 
     // Role-based activity flags
     const canDelete = ['admin', 'manager'].includes(userRole);
     const canAdd = ['admin', 'manager'].includes(userRole);
     const canExport = ['admin', 'manager', 'accountant'].includes(userRole);
+
     const [selectedItems, setSelectedItems] = useState([]);
-    const [editProduct, setEditProduct] = useState(null);
-    const [localSearch, setLocalSearch] = useState('');
-    const [filterCategory, setFilterCategory] = useState('All');
-    const [filterStatus, setFilterStatus] = useState('All');
+    const [adjustProduct, setAdjustProduct] = useState(null);
+    const [showAdjustModal, setShowAdjustModal] = useState(false);
 
-    const filteredInventory = inventory.filter(item => {
-        const matchesSearch = (item.productName || '').toLowerCase().includes(localSearch.toLowerCase()) ||
-            (item.skuId || '').toLowerCase().includes(localSearch.toLowerCase()) ||
-            (typeof item.category === 'string' ? item.category : '').toLowerCase().includes(localSearch.toLowerCase());
-
-        // Normalize status strings for comparison (remove hyphens and spaces)
-        const normalize = (str) => str?.toLowerCase().replace(/[- ]/g, '') || '';
-
-        // Normalize category matching (handle strings and arrays)
-        const matchesCategory = filterCategory === 'All' ||
-            (Array.isArray(item.category)
-                ? item.category.some(cat => cat.trim().toLowerCase() === filterCategory.toLowerCase())
-                : (typeof item.category === 'string' ? item.category.toLowerCase() === filterCategory.toLowerCase() : false));
-
-        const matchesStatus = filterStatus === 'All' || normalize(item.status) === normalize(filterStatus);
-
-        return matchesSearch && matchesCategory && matchesStatus;
-    });
+    const handlePageChange = (newPage) => {
+        if (newPage < 1 || newPage > inventoryStats.pages) return;
+        dispatch(setFilters({ page: newPage }));
+    };
 
     const clearFilters = () => {
-        setLocalSearch('');
-        setFilterCategory('All');
-        setFilterStatus('All');
+        dispatch(resetFilters());
     };
 
     const toggleSelectAll = () => {
-        if (selectedItems.length === filteredInventory.length) {
+        if (selectedItems.length === inventory.length) {
             setSelectedItems([]);
         } else {
-            setSelectedItems(filteredInventory.map(item => item._id));
+            setSelectedItems(inventory.map(item => item._id));
         }
     };
 
@@ -62,23 +75,43 @@ const ProductsList = () => {
         }
     };
 
+    const [deleteMultipleProducts] = useDeleteMultipleProductsMutation();
+
     const handleDelete = (id) => {
-        if (window.confirm('Are you sure you want to delete this product?')) {
-            deleteProduct(id);
-            setSelectedItems(selectedItems.filter(itemId => itemId !== id));
-        }
+        const item = inventory.find(i => i._id === id);
+        confirmDelete({
+            title: item?.productName || 'Product',
+            onConfirm: async () => {
+                await deleteProduct(id);
+                setSelectedItems(prev => prev.filter(itemId => itemId !== id));
+            }
+        });
     };
 
     const handleBulkDelete = () => {
-        if (window.confirm(`Are you sure you want to delete ${selectedItems.length} products?`)) {
-            deleteMultipleProducts(selectedItems);
-            setSelectedItems([]);
-        }
+        confirmDelete({
+            title: `${selectedItems.length} items`,
+            message: `Are you sure you want to permanently delete these ${selectedItems.length} products?`,
+            onConfirm: async () => {
+                await deleteMultipleProducts(selectedItems);
+                setSelectedItems([]);
+            }
+        });
     };
 
     const handleEdit = (product) => {
-        setEditProduct(product);
-        setShowAddModal(true);
+        dispatch(openModal({
+            modalName: 'productForm',
+            mode: 'edit',
+            product: product // Passing the whole product object
+        }));
+    };
+
+    const handleAdd = () => {
+        dispatch(openModal({
+            modalName: 'productForm',
+            mode: 'create'
+        }));
     };
 
     return (
@@ -110,17 +143,29 @@ const ProductsList = () => {
                 </div>
                 <div className="flex items-center gap-3">
                     {canExport && (
-                        <button className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg transition-all text-sm font-medium border border-slate-700">
+                        <button
+                            onClick={() => {
+                                const exportData = inventory.map(i => ({
+                                    ID: i.sku,
+                                    Name: i.productName,
+                                    Category: i.category?.catName || 'N/A',
+                                    Price: i.salePrice,
+                                    Cost: i.costPrice,
+                                    Stock: i.initialQty,
+                                    Status: i.status
+                                }));
+                                exportToCSV(exportData, `products_report_${new Date().toLocaleDateString()}`);
+                            }}
+                            disabled={!canExport}
+                            className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 text-slate-300 hover:text-white rounded-xl border border-slate-700 transition-all font-bold text-xs uppercase tracking-widest disabled:opacity-50"
+                        >
                             <Download className="w-4 h-4" />
                             Export CSV
                         </button>
                     )}
                     {canAdd && (
                         <button
-                            onClick={() => {
-                                setEditProduct(null);
-                                setShowAddModal(true);
-                            }}
+                            onClick={handleAdd}
                             className="flex items-center gap-2 bg-linear-to-r from-purple-600 to-cyan-600 hover:brightness-110 text-white px-4 py-2 rounded-lg transition-all text-sm font-bold shadow-lg shadow-purple-500/20"
                         >
                             <Plus className="w-4 h-4" />
@@ -136,26 +181,26 @@ const ProductsList = () => {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                     <input
                         type="text"
-                        value={localSearch}
-                        onChange={(e) => setLocalSearch(e.target.value)}
+                        value={filters.search}
+                        onChange={(e) => dispatch(setFilters({ search: e.target.value, page: 1 }))}
                         placeholder="Search by name, SKU, or category..."
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-300 focus:outline-none focus:border-purple-500/50 transition-all font-medium"
                     />
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">
                     <select
-                        value={filterCategory}
-                        onChange={(e) => setFilterCategory(e.target.value)}
+                        value={filters.category || 'All'}
+                        onChange={(e) => dispatch(setFilters({ category: e.target.value, page: 1 }))}
                         className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-300 focus:outline-none w-full md:w-48 cursor-pointer hover:border-slate-700 transition-colors"
                     >
                         <option value="All">All Categories</option>
                         {categories.map(cat => (
-                            <option key={cat.id} value={cat.name}>{cat.name}</option>
+                            <option key={cat._id} value={cat.name}>{cat.name}</option>
                         ))}
                     </select>
                     <select
-                        value={filterStatus}
-                        onChange={(e) => setFilterStatus(e.target.value)}
+                        value={filters.status || 'All'}
+                        onChange={(e) => dispatch(setFilters({ status: e.target.value, page: 1 }))}
                         className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-300 focus:outline-none w-full md:w-48 cursor-pointer hover:border-slate-700 transition-colors"
                     >
                         <option value="All">All Status</option>
@@ -184,7 +229,7 @@ const ProductsList = () => {
                                     <div className="flex items-center justify-center">
                                         <input
                                             type="checkbox"
-                                            checked={selectedItems.length === filteredInventory.length && filteredInventory.length > 0}
+                                            checked={selectedItems.length === inventory.length && inventory.length > 0}
                                             onChange={toggleSelectAll}
                                             className="w-4 h-4 rounded border-slate-700 bg-slate-900 accent-purple-500 cursor-pointer"
                                         />
@@ -200,7 +245,7 @@ const ProductsList = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800">
-                            {filteredInventory.map((item, index) => (
+                            {inventory.map((item, index) => (
                                 <motion.tr
                                     key={item._id}
                                     initial={{ opacity: 0 }}
@@ -223,17 +268,17 @@ const ProductsList = () => {
                                     </td>
                                     <td className="px-6 py-5">
                                         <div className="flex items-center gap-4">
-                                         <div className="w-10 h-10 bg-linear-to-br from-slate-700/50 to-slate-800/50 rounded-xl flex items-center justify-center border border-slate-700/50 group-hover:scale-105 transition-transform shrink-0 overflow-hidden">
-                                             {item.productImage ? (
-                                                 <img 
-                                                     src={item.productImage.startsWith('http') ? item.productImage : `${serverUrl}/${item.productImage.replace('\\', '/')}`} 
-                                                     alt={item.productName} 
-                                                     className="w-full h-full object-cover" 
-                                                 />
-                                             ) : (
-                                                 <Package className="w-5 h-5 text-slate-400 group-hover:text-purple-400 transition-colors" />
-                                             )}
-                                         </div>
+                                            <div className="w-10 h-10 bg-linear-to-br from-slate-700/50 to-slate-800/50 rounded-xl flex items-center justify-center border border-slate-700/50 group-hover:scale-105 transition-transform shrink-0 overflow-hidden">
+                                                {item.productImage ? (
+                                                    <img
+                                                        src={item.productImage.startsWith('http') ? item.productImage : `${serverUrl}/${item.productImage.replace('\\', '/')}`}
+                                                        alt={item.productName}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <Package className="w-5 h-5 text-slate-400 group-hover:text-purple-400 transition-colors" />
+                                                )}
+                                            </div>
                                             <div className="min-w-0">
                                                 <p className="text-white font-bold text-sm tracking-tight truncate">{item.productName}</p>
                                                 <p className="text-slate-500 text-[10px] mt-0.5 font-bold uppercase tracking-wider">InvenPro Global</p>
@@ -251,6 +296,16 @@ const ProductsList = () => {
                                     <td className="px-6 py-5">{getStatusBadge(item.status)}</td>
                                     <td className="px-6 py-5 text-right">
                                         <div className="flex items-center justify-end gap-1.5">
+                                            <button
+                                                onClick={() => {
+                                                    setAdjustProduct(item);
+                                                    setShowAdjustModal(true);
+                                                }}
+                                                className="p-2 text-slate-400 hover:text-purple-400 hover:bg-purple-400/10 rounded-lg transition-all"
+                                                title="Adjust Stock"
+                                            >
+                                                <Settings className="w-4 h-4" />
+                                            </button>
                                             <button
                                                 onClick={() => handleEdit(item)}
                                                 className="p-2 text-slate-400 hover:text-cyan-400 hover:bg-cyan-400/10 rounded-lg transition-all"
@@ -284,19 +339,44 @@ const ProductsList = () => {
                     </div>
                 )}
                 <div className="px-6 py-4 bg-slate-800/20 border-t border-slate-800 flex items-center justify-between">
-                    <p className="text-xs text-slate-500 font-medium">Showing <span className="text-slate-300 font-bold">{filteredInventory.length}</span> of <span className="text-slate-300 font-bold">{inventory.length}</span> products</p>
+                    <p className="text-xs text-slate-500 font-medium tracking-tight">
+                        Showing Page <span className="text-slate-300 font-bold">{inventoryStats.page}</span> of <span className="text-slate-300 font-bold">{inventoryStats.pages}</span> (Total <span className="text-slate-300 font-bold">{inventoryStats.total}</span> products)
+                    </p>
                     <div className="flex gap-2">
-                        <button className="px-4 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-600 text-[11px] font-bold cursor-not-allowed">Previous</button>
-                        <button className="px-4 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 text-[11px] font-bold hover:bg-slate-800 transition-colors">Next</button>
+                        <button
+                            onClick={() => handlePageChange(inventoryStats.page - 1)}
+                            disabled={inventoryStats.page <= 1}
+                            className={clsx(
+                                "px-4 py-1.5 rounded-lg border text-[11px] font-bold transition-all",
+                                inventoryStats.page <= 1
+                                    ? "bg-slate-900/50 border-slate-800 text-slate-600 cursor-not-allowed"
+                                    : "bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white"
+                            )}
+                        >
+                            Previous
+                        </button>
+                        <button
+                            onClick={() => handlePageChange(inventoryStats.page + 1)}
+                            disabled={inventoryStats.page >= inventoryStats.pages}
+                            className={clsx(
+                                "px-4 py-1.5 rounded-lg border text-[11px] font-bold transition-all",
+                                inventoryStats.page >= inventoryStats.pages
+                                    ? "bg-slate-900/50 border-slate-800 text-slate-600 cursor-not-allowed"
+                                    : "bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white"
+                            )}
+                        >
+                            Next
+                        </button>
                     </div>
                 </div>
             </div>
 
             <AnimatePresence>
-                {showAddModal && (
-                    <AddProduct
-                        isOpen={showAddModal}
-                        editProduct={editProduct}
+                {showAdjustModal && (
+                    <AdjustStockModal
+                        isOpen={showAdjustModal}
+                        onClose={() => setShowAdjustModal(false)}
+                        product={adjustProduct}
                     />
                 )}
             </AnimatePresence>

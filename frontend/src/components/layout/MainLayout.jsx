@@ -1,8 +1,23 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
+import { useAppDispatch } from '../../redux/hooks';
+import { setActiveTab } from '../../redux/slices/uiSlice';
 
 const MainLayout = () => {
+    const location = useLocation();
+    const dispatch = useAppDispatch();
+
+    useEffect(() => {
+        const path = location.pathname.split('/')[1];
+        if (path) {
+            dispatch(setActiveTab(path));
+        } else {
+            dispatch(setActiveTab('dashboard'));
+        }
+    }, [location, dispatch]);
+
     return (
         <div className="min-h-screen bg-[#050505] flex">
             <Sidebar />

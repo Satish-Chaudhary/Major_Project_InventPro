@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Mail, User, Phone, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Lock, Mail, User, Phone, ArrowRight, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import InventProLogo from '../components/layout/InventProLogo';
 import { toast } from 'react-hot-toast';
 import { ClipLoader } from 'react-spinners';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { serverUrl } from '../App.jsx';
+
+import { useAppDispatch, useAppSelector } from '../redux/hooks';
+import { registerAdmin, selectAuthLoading } from '../redux/slices/authSlice';
 
 const AdminRegister = () => {
+    const dispatch = useAppDispatch();
+    const loading = useAppSelector(selectAuthLoading);
     const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         fullName: '',
         email: '',
@@ -18,21 +20,17 @@ const AdminRegister = () => {
         password: '',
         confirmPassword: ''
     });
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true);
-
-        try {
-            const response = await axios.post(`${serverUrl}/api/auth/register-admin`, formData);
-            if (response.data.success) {
-                toast.success('Admin registered successfully!');
-                navigate('/login');
-            }
-        } catch (error) {
-            toast.error(error.response?.data?.message || 'Registration failed');
-        } finally {
-            setLoading(false);
+        const action = await dispatch(registerAdmin(formData));
+        if (registerAdmin.fulfilled.match(action)) {
+            toast.success('Admin registered successfully!');
+            navigate('/login', { state: { isAdmin: true } });
+        } else {
+            toast.error(action.payload?.message || 'Registration failed');
         }
     };
 
@@ -96,24 +94,38 @@ const AdminRegister = () => {
                             <div className="relative group">
                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-purple-400" />
                                 <input
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     placeholder="Password"
                                     required
                                     value={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-purple-500/50"
+                                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-12 pr-12 py-4 text-white focus:outline-none focus:border-purple-500/50"
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                >
+                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
                             </div>
                             <div className="relative group">
                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-purple-400" />
                                 <input
-                                    type="password"
+                                    type={showConfirmPassword ? "text" : "password"}
                                     placeholder="Confirm Password"
                                     required
                                     value={formData.confirmPassword}
                                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-12 pr-4 py-4 text-white focus:outline-none focus:border-purple-500/50"
+                                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-12 pr-12 py-4 text-white focus:outline-none focus:border-purple-500/50"
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                >
+                                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
                             </div>
                         </div>
 

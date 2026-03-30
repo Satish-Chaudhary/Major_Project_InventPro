@@ -1,16 +1,18 @@
 import { clsx } from 'clsx';
 import { Link } from 'react-router-dom'
 
-import { useApp } from '../../context/AppContext';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks.js';
+import { selectActiveTab, setActiveTab } from '../../redux/slices/uiSlice.js';
 
 const SideNavLinks = ({ id, Icon, label }) => {
-    const { activeTab, setActiveTab } = useApp();
+    const dispatch = useAppDispatch();
+    const activeTab = useAppSelector(selectActiveTab);
 
     return (
         <>
             <Link
-                to={id}
-                onClick={() => setActiveTab(id)}
+                to={'/' + id}
+                onClick={() => dispatch(setActiveTab(id))}
                 className={clsx(
                     'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group',
                     activeTab === id

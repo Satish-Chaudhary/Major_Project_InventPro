@@ -9,6 +9,7 @@ import orderRoutes from './routes/order.routes.js';
 import supplierRoutes from './routes/supplier.routes.js';
 import settingRoutes from './routes/setting.routes.js';
 import reportRoutes from './routes/report.routes.js';
+import poRoutes from './routes/purchaseOrder.routes.js'
 import connectDB from './config/db.js';
 import cors from 'cors';
 import path from 'path';
@@ -40,6 +41,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/suppliers", supplierRoutes);
 app.use("/api/settings", settingRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/purchase-orders", poRoutes);
 
 app.listen(port, () => {
     connectDB();

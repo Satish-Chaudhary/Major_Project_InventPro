@@ -5,10 +5,13 @@ import { clsx } from 'clsx';
 import Notification from './Notification.jsx';
 import NotificationBox from './NotificationBox.jsx';
 import SideNavHeader from './SideNavHeader.jsx';
-import { useApp } from '../../context/AppContext';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
+import { useGetActivitiesQuery } from '../../redux/slices/activitySlice';
+import { selectLastReadAuditTime, clearAuditNotifications } from '../../redux/slices/uiSlice';
 
 const NotificationTicker = () => {
-    const { auditLogs } = useApp();
+    const { data: activityData } = useGetActivitiesQuery({ limit: 10 });
+    const auditLogs = activityData?.activities || [];
     const [index, setIndex] = useState(0);
     const recentLogs = auditLogs.slice(0, 4);
 
@@ -44,7 +47,7 @@ const NotificationTicker = () => {
                         {current.action}
                     </span>
                     <span className="text-[8px] font-black text-slate-600 uppercase tracking-tighter shrink-0">
-                        {new Date(current.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {current.createdAt ? new Date(current.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
                     </span>
                 </motion.div>
             </AnimatePresence>
@@ -53,9 +56,12 @@ const NotificationTicker = () => {
 };
 
 const Header = () => {
-    const {
-        notifications,
-    } = useApp();
+    const dispatch = useAppDispatch();
+    const { data: activityData } = useGetActivitiesQuery({ limit: 10 });
+    const auditLogs = activityData?.activities || [];
+    const lastReadTime = useAppSelector(selectLastReadAuditTime);
+    const notifications = auditLogs.filter(log => new Date(log.createdAt).getTime() > lastReadTime);
+    
     const [showNotifications, setShowNotifications] = useState(false);
     const notificationRef = useRef(null);
 

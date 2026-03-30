@@ -33,6 +33,7 @@ Major_Project_InventPro/
 
 ### Frontend
 - **Framework**: React 19 (Vite)
+- **State Management**: Redux Toolkit (Slices, RTK Query, Persist)
 - **Styling**: Tailwind CSS 4
 - **Animation**: Framer Motion
 - **Icons**: Lucide React
@@ -41,6 +42,8 @@ Major_Project_InventPro/
 
 ### Backend
 - **Framework**: Node.js & Express
+- **Database**: MongoDB (Mongoose)
+- **Security**: JWT, Bcrypt, Cookie-based sessions
 - **Architecture**: MVC (Model-View-Controller)
 - **Environment**: Dotenv for configuration
 
@@ -48,7 +51,7 @@ Major_Project_InventPro/
 
 ### Prerequisites
 - Node.js (Latest LTS recommended)
-- npm or yarn
+- MongoDB (Running instance or Atlas)
 
 ### Installation
 
@@ -62,7 +65,7 @@ Major_Project_InventPro/
    ```bash
    cd backend
    npm install
-   # Create a .env file and add your configuration
+   # Create a .env file with PORT, MONGO_URI, JWT_SECRET, EMAIL, EMAIL_PASS
    ```
 
 3. **Setup Frontend**
@@ -86,4 +89,9 @@ Major_Project_InventPro/
 
 ## 📄 Documentation
 
-For a detailed look at the application flow and page connectivity, refer to the [WORKFLOW.md](WORKFLOW.md) file.
+- [WORKFLOW.md](WORKFLOW.md) — Detailed page connectivity & user flow.
+- [ROADMAP.md](ROADMAP.md) — Project phases and implementation tasks.
+- [IMPLEMENTATION_REPORT.md](IMPLEMENTATION_REPORT.md) — Final deployment and feature status.
+- [inventory-system-specification.md](inventory-system-specification.md) — Functional requirements & technical specs.
+
+**Project Status**: 🟢 **Complete & Dynamic**. All 12 core modules are production-ready with real-time backend integration and Redux state management.

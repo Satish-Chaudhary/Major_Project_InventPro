@@ -1,44 +1,46 @@
 import React from 'react';
 import {
     LayoutDashboard, Package, TrendingUp, Users,
-    Settings, BarChart3, ArrowUpDown, LogOut, ShieldCheck, History
+    Settings, BarChart3, ArrowUpDown, LogOut, ShieldCheck, History, Truck
 } from 'lucide-react';
 import SideNavHeader from './SideNavHeader.jsx';
 import SideNavLinks from './SideNavLinks.jsx';
 import AdminProfileButton from './AdminProfileButton.jsx';
-
-import { useApp } from '../../context/AppContext';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
+import { logout, selectUser } from '../../redux/slices/authSlice';
+import { ROLES } from '../../config/permissions';
 
 const Sidebar = () => {
-    const { activeTab, setActiveTab, logout, user } = useApp();
+    const dispatch = useAppDispatch();
+    const user = useAppSelector(selectUser);
 
-    const rolePermissions = {
-        'admin': ['dashboard', 'admin-dashboard', 'inventory', 'approvals', 'users', 'roles', 'categories', 'orders', 'suppliers', 'analytics', 'reports', 'settings', 'audit'],
-        'manager': ['dashboard', 'inventory', 'categories', 'orders', 'suppliers', 'analytics', 'reports', 'audit'],
-        'warehouse staff': ['dashboard', 'inventory', 'categories', 'audit'],
-        'sales staff': ['dashboard', 'inventory', 'orders', 'audit'],
-        'accountant': ['dashboard', 'inventory', 'suppliers', 'analytics', 'reports', 'audit'],
+    const handleLogout = () => {
+        dispatch(logout());
     };
 
     const menuItems = [
         { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-        { id: 'admin-dashboard', icon: ShieldCheck, label: 'Admin Panel', roles: ['admin'] },
+        { id: 'admin-dashboard', icon: ShieldCheck, label: 'Admin Panel', roles: [ROLES.ADMIN, ROLES.ROOT] },
         { id: 'inventory', icon: Package, label: 'Inventory' },
-        { id: 'approvals', icon: ShieldCheck, label: 'Staff Requests', roles: ['admin'] },
-        { id: 'users', icon: Users, label: 'User Database', roles: ['admin'] },
-        { id: 'roles', icon: ShieldCheck, label: 'Roles & Security', roles: ['admin'] },
-        { id: 'categories', icon: Package, label: 'Item Categories', roles: ['admin', 'manager', 'warehouse staff'] },
+        { id: 'approvals', icon: ShieldCheck, label: 'Staff Requests', roles: [ROLES.ADMIN, ROLES.ROOT] },
+        { id: 'users', icon: Users, label: 'User Database', roles: [ROLES.ADMIN, ROLES.ROOT] },
+        { id: 'roles', icon: ShieldCheck, label: 'Roles & Security', roles: [ROLES.ADMIN, ROLES.ROOT] },
+        { id: 'categories', icon: Package, label: 'Item Categories', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.WAREHOUSE] },
         { id: 'audit', icon: History, label: 'Audit Logs' },
-        { id: 'orders', icon: ArrowUpDown, label: 'Sales & Orders', roles: ['admin', 'manager', 'sales staff'] },
-        { id: 'suppliers', icon: Users, label: 'Vendor Registry', roles: ['admin', 'manager', 'accountant'] },
-        { id: 'analytics', icon: BarChart3, label: 'System Analytics', roles: ['admin', 'manager', 'accountant'] },
-        { id: 'reports', icon: BarChart3, label: 'Advanced Reports', roles: ['admin', 'manager', 'accountant'] },
-        { id: 'settings', icon: Settings, label: 'System Settings', roles: ['admin'] },
+        { id: 'security', icon: ShieldCheck, label: 'Security Audit', roles: [ROLES.ADMIN, ROLES.ROOT] },
+        { id: 'orders', icon: ArrowUpDown, label: 'Sales & Orders', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.SALES, ROLES.SALES_STAFF] },
+        { id: 'suppliers', icon: Users, label: 'Vendor Registry', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT] },
+        { id: 'purchase-orders', icon: Truck, label: 'Purchase Orders', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.WAREHOUSE] },
+        { id: 'analytics', icon: BarChart3, label: 'System Analytics', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT] },
+        { id: 'reports', icon: BarChart3, label: 'Advanced Reports', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT] },
+        { id: 'settings', icon: Settings, label: 'System Settings', roles: [ROLES.ADMIN, ROLES.ROOT] },
     ];
 
     const filteredMenu = menuItems.filter(item => {
-        if (!item.roles) return true; // Visible to everyone if no roles specified
-        return item.roles.includes(user?.role?.toLowerCase());
+        if (!item.roles) return true;
+        const userRole = user?.role?.toLowerCase();
+        const normalizedRole = userRole === 'warehouse' ? ROLES.WAREHOUSE : userRole === 'sales' ? ROLES.SALES_STAFF : userRole;
+        return item.roles.includes(normalizedRole);
     });
 
     return (
@@ -54,7 +56,7 @@ const Sidebar = () => {
 
                 <AdminProfileButton />
                 <button
-                    onClick={logout}
+                    onClick={handleLogout}
                     className="w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
                 >
                     <LogOut className="w-5 h-5" />

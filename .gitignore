@@ -1,0 +1,26 @@
+# Ignore all root files and directories by default
+/*
+
+# Allow crucial root configuration files
+!.gitignore
+!README.md
+!WORKFLOW.md
+!ROADMAP.md
+!IMPLEMENTATION_REPORT.md
+!inventory-system-specification.md
+
+# Allow core application directories
+!backend/
+!frontend/
+
+# Note: Sub-directories like backend/node_modules should still be ignored
+# via their own .gitignore files or by specifying ignore rules below
+backend/node_modules/
+backend/.env
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+.agent/
+.gemini/
+.gsd/
+.DS_Store

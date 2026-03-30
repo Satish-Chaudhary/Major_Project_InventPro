@@ -1,10 +1,13 @@
 import { clsx } from 'clsx'
 import { Link } from 'react-router-dom'
 
-import { useApp } from '../../context/AppContext';
+import { useAppSelector } from '../../redux/hooks';
+import { selectActiveTab } from '../../redux/slices/uiSlice';
+import { selectUser } from '../../redux/slices/authSlice';
 
 const AdminProfileButton = () => {
-    const { activeTab } = useApp();
+    const activeTab = useAppSelector(selectActiveTab);
+    const user = useAppSelector(selectUser);
     return (
         <>
             <Link
@@ -17,12 +20,12 @@ const AdminProfileButton = () => {
                 )}
             >
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-linear-to-br from-purple-600 to-cyan-600 rounded-full flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
-                        <span className="text-white font-bold">A</span>
+                    <div className="w-10 h-10 bg-linear-to-br from-purple-600 to-cyan-600 rounded-full flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform uppercase font-black text-white">
+                        {user?.fullName?.charAt(0) || 'U'}
                     </div>
                     <div className="overflow-hidden">
-                        <p className="text-white font-medium text-sm truncate">Admin User</p>
-                        <p className="text-slate-400 text-xs truncate">admin@inventpro.com</p>
+                        <p className="text-white font-black text-xs truncate uppercase tracking-tighter">{user?.fullName || 'User'}</p>
+                        <p className="text-slate-500 text-[10px] truncate font-bold italic">{user?.email || 'user@example.com'}</p>
                     </div>
                 </div>
             </Link>

@@ -1,5 +1,5 @@
 import express from "express";
-import { adminRegister, approveRequest, getMe, getPendingRequests, logIn, logout, rejectRequest, requestAccess, resetPassword, sendOtp, verifyOtp, updateMe } from "../controllers/auth.controllers.js";
+import { adminRegister, approveRequest, getMe, getPendingRequests, logIn, logout, rejectRequest, requestAccess, resetPassword, sendOtp, verifyOtp, updateMe, getSecuritySummary } from "../controllers/auth.controllers.js";
 import { authMiddleware } from "../middleware/isAuth.middleware.js";
 import { authorize } from "../middleware/role.middleware.js";
 
@@ -17,6 +17,7 @@ authRouter.post('/verify-otp', verifyOtp)
 authRouter.post('/reset-password', resetPassword);
 
 // Admin Routes (Protected)
+authRouter.get('/security-summary', authMiddleware, authorize(['admin', 'root']), getSecuritySummary);
 authRouter.get('/pending-requests', authMiddleware, authorize(['admin', 'root']), getPendingRequests);
 authRouter.post('/approve/:id', authMiddleware, authorize(['admin', 'root']), approveRequest);
 authRouter.post('/reject/:id', authMiddleware, authorize(['admin', 'root']), rejectRequest);
