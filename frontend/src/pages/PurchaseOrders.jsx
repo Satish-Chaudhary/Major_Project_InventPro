@@ -47,12 +47,12 @@ const PurchaseOrders = () => {
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="p-8 space-y-8"
+            className="p-8 space-y-6"
         >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h2 className="text-4xl font-black text-white tracking-tight">Purchase Orders</h2>
-                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Inventory replenishment & procurement</p>
+                    <h2 className="text-2xl font-bold text-white tracking-tight">Purchase Orders</h2>
+                    <p className="text-slate-400 text-xs font-medium mt-1">Inventory replenishment & procurement</p>
                 </div>
                 <button 
                     onClick={() => navigate('/create-po')}

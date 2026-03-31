@@ -71,8 +71,11 @@ export const addProduct = async (req, res) => {
 // @access  Private
 export const getAllProducts = async (req, res) => {
     try {
-        const { page = 1, limit = 10, search = '', category = '', sort = 'createdAt', order = 'desc' } = req.query;
-        
+        const { page = 1, limit = 10, search = '', category = '', status = '', sort = 'createdAt', order = 'desc' } = req.query;
+
+        // Cap limit to prevent unbounded queries (V13 performance)
+        const safeLimit = Math.min(Number(limit), 100);
+
         const filter = {};
         if (search) {
             filter.$or = [
@@ -84,26 +87,30 @@ export const getAllProducts = async (req, res) => {
         if (category && category !== 'All') {
             filter.category = category;
         }
+        if (status && status !== 'All') {
+            filter.status = { $regex: status, $options: 'i' };
+        }
 
-        const skip = (page - 1) * limit;
+        const skip = (page - 1) * safeLimit;
         const total = await Product.countDocuments(filter);
         const products = await Product.find(filter)
             .sort({ [sort]: order === 'desc' ? -1 : 1 })
             .skip(skip)
-            .limit(Number(limit));
+            .limit(safeLimit);
 
         res.status(200).json({
             success: true,
             products,
             total,
             page: Number(page),
-            pages: Math.ceil(total / limit)
+            pages: Math.ceil(total / safeLimit)
         });
     } catch (error) {
         console.error("Error fetching products:", error);
         res.status(500).json({ success: false, message: "Server Error", error: error.message });
     }
 };
+
 
 // @desc    Get low stock products
 // @route   GET /api/product/low-stock
@@ -200,7 +207,16 @@ export const adjustStock = async (req, res) => {
         }
 
         const oldQty = product.initialQty;
-        product.initialQty += Number(adjustment);
+        const newQty = product.initialQty + Number(adjustment);
+
+        if (newQty < 0) {
+            return res.status(400).json({
+                success: false,
+                message: `Insufficient stock. Current quantity is ${oldQty}. Cannot reduce by ${Math.abs(adjustment)}.`
+            });
+        }
+
+        product.initialQty = newQty;
 
         // Update status based on new quantity
         if (product.initialQty <= 0) {

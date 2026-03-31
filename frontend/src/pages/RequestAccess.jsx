@@ -40,7 +40,8 @@ const RequestAccess = () => {
                     email,
                     role: requestedRole,
                     password,
-                    confirmPassword
+                    confirmPassword,
+                    message
                 },
                 { withCredentials: true })
 
@@ -199,12 +200,11 @@ const RequestAccess = () => {
 
                                     <div className="space-y-2 group">
                                         <textarea
-                                            required
                                             value={message}
                                             onChange={(e) => {
                                                 setMessage(e.target.value)
                                             }}
-                                            placeholder="Briefly describe your role..."
+                                            placeholder="Briefly describe your role and why you need access (optional)..."
                                             className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500/50 transition-all focus:ring-4 focus:ring-purple-500/5 h-24 resize-none"
                                         />
                                     </div>

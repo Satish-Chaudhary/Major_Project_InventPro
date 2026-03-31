@@ -60,7 +60,10 @@ export const addOrder = async (req, res) => {
 export const getAllOrders = async (req, res) => {
     try {
         const { page = 1, limit = 10, search = '', type = '', status = '' } = req.query;
-        
+
+        // Cap limit (V13 performance guard)
+        const safeLimit = Math.min(Number(limit), 100);
+
         const filter = {};
         if (search) {
             filter.$or = [
@@ -71,19 +74,20 @@ export const getAllOrders = async (req, res) => {
         if (type) filter.type = type;
         if (status) filter.status = status;
 
-        const skip = (page - 1) * limit;
+        const skip = (page - 1) * safeLimit;
         const total = await Order.countDocuments(filter);
         const orders = await Order.find(filter)
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(Number(limit))
+            .limit(safeLimit)
             .populate('items.productId');
 
-        res.status(200).json({ success: true, orders, total, page: Number(page), pages: Math.ceil(total / limit) });
+        res.status(200).json({ success: true, orders, total, page: Number(page), pages: Math.ceil(total / safeLimit) });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
 
 // @desc    Update order status and handle inventory reversal if cancelled
 // @route   PUT /api/orders/update/:id

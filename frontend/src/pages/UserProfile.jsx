@@ -13,9 +13,11 @@ import { selectUser, updateProfile } from '../redux/slices/authSlice';
 import { useGetActivitiesQuery } from '../redux/slices/activitySlice';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 const UserProfile = () => {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
     const user = useAppSelector(selectUser);
     const { data: activityData } = useGetActivitiesQuery({ limit: 4 });
     const userActivities = activityData?.activities?.filter(act => act.user === user?.fullName) || [];
@@ -60,7 +62,7 @@ const UserProfile = () => {
                     User Profile
                 </div>
                 <div className="flex gap-3">
-                    <button className="flex items-center gap-2 bg-slate-800 border border-slate-700 text-slate-300 px-5 py-2 rounded-xl hover:bg-slate-700 transition-all text-xs font-bold uppercase tracking-widest leading-none">
+                    <button onClick={() => navigate('/reset-password')} className="flex items-center gap-2 bg-slate-800 border border-slate-700 text-slate-300 px-5 py-2 rounded-xl hover:bg-slate-700 transition-all text-xs font-bold uppercase tracking-widest leading-none">
                         <Lock className="w-4 h-4" />
                         Reset password
                     </button>
@@ -101,7 +103,7 @@ const UserProfile = () => {
                             {[
                                 { label: 'Email', value: user.email, icon: Mail },
                                 { label: 'Status', value: user.status === 'active' ? 'Verified' : 'Pending', icon: CheckCircle2, status: true },
-                                { label: 'Joined On', value: format(new Date(user.createdAt), 'MMM dd, yyyy'), icon: Calendar },
+                                { label: 'Joined On', value: user.createdAt ? format(new Date(user.createdAt), 'MMM dd, yyyy') : 'N/A', icon: Calendar },
                             ].map(item => (
                                 <div key={item.label} className="flex flex-col gap-1">
                                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{item.label}</span>
@@ -193,7 +195,7 @@ const UserProfile = () => {
                                         </div>
                                         <div>
                                             <p className="text-white font-bold text-sm leading-tight">{act.action}</p>
-                                            <p className="text-slate-500 text-[11px] font-medium mt-1 leading-none">{format(new Date(act.createdAt), 'PPp')}</p>
+                                            <p className="text-slate-500 text-[11px] font-medium mt-1 leading-none">{act.createdAt && !isNaN(new Date(act.createdAt)) ? format(new Date(act.createdAt), 'PPp') : 'Unknown time'}</p>
                                         </div>
                                     </div>
                                     <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest border border-slate-800 px-2.5 py-1 rounded-md bg-slate-900">
