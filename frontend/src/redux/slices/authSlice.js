@@ -152,3 +152,4 @@ export const selectPermissions = (state) => state.auth.permissions
 export const selectRoles = (state) => state.auth.roles
 export const selectAuthLoading = (state) => state.auth.isLoading
 export const selectAuthError = (state) => state.auth.error
+export const selectToken = (state) => state.auth.token

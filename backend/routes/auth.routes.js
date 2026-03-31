@@ -1,11 +1,12 @@
 import express from "express";
-import { adminRegister, approveRequest, getMe, getPendingRequests, logIn, logout, rejectRequest, requestAccess, resetPassword, sendOtp, verifyOtp, updateMe, getSecuritySummary } from "../controllers/auth.controllers.js";
+import { adminRegister, approveRequest, getMe, getPendingRequests, logIn, logout, rejectRequest, registerRoot, requestAccess, resetPassword, sendOtp, verifyOtp, updateMe, getSecuritySummary } from "../controllers/auth.controllers.js";
 import { authMiddleware } from "../middleware/isAuth.middleware.js";
 import { authorize } from "../middleware/role.middleware.js";
 
 const authRouter = express.Router();
 
 authRouter.post('/login', logIn);
+authRouter.post('/register-root', registerRoot);
 authRouter.post('/register-admin', adminRegister);
 authRouter.post('/request-access', requestAccess);
 authRouter.get('/me', authMiddleware, getMe);

@@ -1,6 +1,8 @@
 import Order from "../models/order.model.js";
 import Product from "../models/product.model.js";
 import { logActivity } from "../utils/logger.utils.js";
+import { io } from "../socket/socket.js";
+import { sendNotification } from "../utils/notification.utils.js";
 
 // @desc    Add a new order and sync stock
 // @route   POST /api/orders/add
@@ -45,8 +47,31 @@ export const addOrder = async (req, res) => {
             }
         }
 
-        // 4. Log activity
+        // Log activity
         await logActivity(req.user._id, `Created ${type} order: ${orderData.orderId}`, 'orders', { orderId: newOrder._id }, req.ip);
+
+        // Emit real-time events
+        io.emit("order:updated", newOrder);
+        // Stock was updated inside the loop, emit those products
+        for (const item of items) {
+           const p = await Product.findById(item.productId);
+           if (p) io.emit("stock:updated", p);
+        }
+
+        // Send notifications to relevant roles
+        const notificationPayload = {
+            title: `New ${type.toUpperCase()} Order`,
+            message: `Order ${newOrder.orderId} created by ${req.user.fullName}`,
+            type: 'order',
+            metadata: { orderId: newOrder._id }
+        };
+        await sendNotification({ ...notificationPayload, role: 'admin' });
+        await sendNotification({ ...notificationPayload, role: 'manager' });
+        if (type === 'outward') {
+            await sendNotification({ ...notificationPayload, role: 'sales staff' });
+        } else {
+            await sendNotification({ ...notificationPayload, role: 'warehouse staff' });
+        }
 
         res.status(201).json({ success: true, message: "Order created and stock synchronized", order: newOrder });
     } catch (error) {
@@ -60,7 +85,10 @@ export const addOrder = async (req, res) => {
 export const getAllOrders = async (req, res) => {
     try {
         const { page = 1, limit = 10, search = '', type = '', status = '' } = req.query;
-        
+
+        // Cap limit (V13 performance guard)
+        const safeLimit = Math.min(Number(limit), 100);
+
         const filter = {};
         if (search) {
             filter.$or = [
@@ -71,15 +99,29 @@ export const getAllOrders = async (req, res) => {
         if (type) filter.type = type;
         if (status) filter.status = status;
 
-        const skip = (page - 1) * limit;
+        const skip = (page - 1) * safeLimit;
         const total = await Order.countDocuments(filter);
         const orders = await Order.find(filter)
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(Number(limit))
+            .limit(safeLimit)
             .populate('items.productId');
 
-        res.status(200).json({ success: true, orders, total, page: Number(page), pages: Math.ceil(total / limit) });
+        res.status(200).json({ success: true, orders, total, page: Number(page), pages: Math.ceil(total / safeLimit) });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+
+// @desc    Get order by ID
+// @route   GET /api/orders/:id
+export const getOrderById = async (req, res) => {
+    try {
+        const order = await Order.findById(req.params.id)
+            .populate('items.productId');
+        if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+        res.status(200).json({ success: true, order });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -112,8 +154,28 @@ export const updateOrder = async (req, res) => {
                 }
             }
             await logActivity(req.user._id, `Cancelled order ${newOrder.orderId} - stock restored`, 'orders', { orderId: newOrder._id }, req.ip);
+            
+            // Notify about cancellation
+            const cancelNotify = {
+                title: `Order Cancelled`,
+                message: `Order ${newOrder.orderId} was cancelled. Stock has been restored.`,
+                type: 'order',
+                metadata: { orderId: newOrder._id }
+            };
+            await sendNotification({ ...cancelNotify, role: 'admin' });
+            await sendNotification({ ...cancelNotify, role: 'manager' });
         } else {
             await logActivity(req.user._id, `Updated order status: ${newOrder.orderId} -> ${newOrder.status}`, 'orders', { orderId: newOrder._id }, req.ip);
+        }
+
+        // Emit real-time events
+        io.emit("order:updated", newOrder);
+        // If it was cancelled, stock has been restored, emit product updates
+        if (newOrder.status === 'cancelled' && oldOrder.status !== 'cancelled') {
+            for (const item of newOrder.items) {
+                const p = await Product.findById(item.productId);
+                if (p) io.emit("stock:updated", p);
+            }
         }
 
         res.status(200).json({ success: true, message: "Order updated", order: newOrder });

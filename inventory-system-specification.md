@@ -266,3 +266,267 @@ erDiagram
     PRODUCT }|--|| SUPPLIER : "sourced from"
     ACCESS-REQUEST ||--o| USER : "becomes"
 ```
+
+---
+
+## 4. DATABASE MODELS & FIELD STRUCTURES
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                    USER MODEL - 15 FIELDS                       │
+├─────────────────────────────────────────────────────────────────┤
+│  1. _id              │  9. resetOtp                             │
+│  2. fullName         │ 10. otpExpires                           │
+│  3. email            │ 11. isOtpVerified                        │
+│  4. phone            │ 12. otpAttempts                          │
+│  5. password         │ 13. createdAt                            │
+│  6. confirmPassword  │ 14. updatedAt                            │
+│  7. role             │ 15. __v                                  │
+│  8. status           │                                          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                  PRODUCT MODEL - 18 FIELDS                       │
+├─────────────────────────────────────────────────────────────────┤
+│  1. _id              │ 10. productImage                         │
+│  2. productName      │ 11. basePrice                            │
+│  3. productId        │ 12. costPrice                            │
+│  4. productDescription│ 13. tax                                  │
+│  5. category         │ 14. status                               │
+│  6. brand            │ 15. createdAt                            │
+│  7. skuId            │ 16. updatedAt                            │
+│  8. barcodeEAN       │ 17. __v                                  │
+│  9. initialQty       │ 18. lowStockThreshold                    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                 CUSTOMER MODEL - 19 FIELDS                       │
+├─────────────────────────────────────────────────────────────────┤
+│  1. _id              │ 11. currentBalance                       │
+│  2. customerNumber   │ 12. totalSpent                           │
+│  3. customerType     │ 13. totalOrders                          │
+│  4. name             │ 14. notes                                │
+│  5. email            │ 15. isActive                             │
+│  6. phone            │ 16. createdAt                            │
+│  7. companyName      │ 17. updatedAt                            │
+│  8. taxId            │ 18. __v                                  │
+│  9. billingAddress   │ 19. shippingAddress                      │
+│ 10. creditLimit      │                                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                    ORDER MODEL - 13 FIELDS                       │
+├─────────────────────────────────────────────────────────────────┤
+│  1. _id              │  8. itemSummary                          │
+│  2. orderId          │  9. value                                │
+│  3. date             │ 10. status                               │
+│  4. time             │ 11. createdAt                            │
+│  5. type             │ 12. updatedAt                            │
+│  6. entity           │ 13. __v                                  │
+│  7. items            │                                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                 SALES ORDER MODEL - 24 FIELDS                    │
+├─────────────────────────────────────────────────────────────────┤
+│  1. _id              │ 13. paymentMethod                        │
+│  2. orderNumber      │ 14. paymentGateway                       │
+│  3. customer         │ 15. transactionId                        │
+│  4. items            │ 16. paymentDueDate                       │
+│  5. subtotal         │ 17. shippingDetails                      │
+│  6. discountTotal    │ 18. notes                                │
+│  7. taxAmount        │ 19. termsAndConditions                   │
+│  8. shippingAmount   │ 20. createdBy                            │
+│  9. total            │ 21. createdAt                            │
+│ 10. paidAmount       │ 22. updatedAt                            │
+│ 11. dueAmount        │ 23. __v                                  │
+│ 12. paymentStatus    │ 24. orderStatus                          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                  PAYMENT MODEL - 15 FIELDS                       │
+├─────────────────────────────────────────────────────────────────┤
+│  1. _id              │  9. receiptUrl                           │
+│  2. salesOrderId     │ 10. notes                                │
+│  3. customerId       │ 11. metadata                             │
+│  4. amount           │ 12. createdAt                            │
+│  5. paymentMethod    │ 13. updatedAt                            │
+│  6. paymentGateway   │ 14. __v                                  │
+│  7. transactionId    │ 15. paymentDate                          │
+│  8. status           │                                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                  INVOICE MODEL - 19 FIELDS                       │
+├─────────────────────────────────────────────────────────────────┤
+│  1. _id              │ 11. dueDate                              │
+│  2. invoiceNumber    │ 12. pdfUrl                               │
+│  3. salesOrderId     │ 13. sentDate                             │
+│  4. customerId       │ 14. paidDate                             │
+│  5. items            │ 15. notes                                │
+│  6. subtotal         │ 16. termsAndConditions                   │
+│  7. taxAmount        │ 17. createdAt                            │
+│  8. discountTotal    │ 18. updatedAt                            │
+│  9. total            │ 19. __v                                  │
+│ 10. status           │                                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                  SUPPLIER MODEL - 13 FIELDS                      │
+├─────────────────────────────────────────────────────────────────┤
+│  1. _id              │  8. reliability                          │
+│  2. company          │  9. location                             │
+│  3. code             │ 10. createdAt                            │
+│  4. contact          │ 11. updatedAt                            │
+│  5. email            │ 12. __v                                  │
+│  6. phone            │ 13. status                               │
+│  7. categories       │                                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                  CATEGORY MODEL - 10 FIELDS                      │
+├─────────────────────────────────────────────────────────────────┤
+│  1. _id              │  6. thumbnail                            │
+│  2. catName          │  7. createdAt                            │
+│  3. slug             │  8. updatedAt                            │
+│  4. description      │  9. __v                                  │
+│  5. parent           │ 10. status                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│               PURCHASE ORDER MODEL - 12 FIELDS                   │
+├─────────────────────────────────────────────────────────────────┤
+│  1. _id              │  7. expectedDate                         │
+│  2. poNumber         │  8. receivedDate                         │
+│  3. supplier         │  9. notes                                │
+│  4. items            │ 10. createdAt                            │
+│  5. totalAmount      │ 11. updatedAt                            │
+│  6. status           │ 12. __v                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                 DEPARTMENT MODEL - 7 FIELDS                      │
+├─────────────────────────────────────────────────────────────────┤
+│  1. _id              │  5. createdAt                            │
+│  2. name             │  6. updatedAt                            │
+│  3. description      │  7. __v                                  │
+│  4. manager          │                                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                    ROLE MODEL - 7 FIELDS                         │
+├─────────────────────────────────────────────────────────────────┤
+│  1. _id              │  5. createdAt                            │
+│  2. name             │  6. updatedAt                            │
+│  3. permissions      │  7. __v                                  │
+│  4. description      │                                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│              PAYMENT GATEWAY MODEL - 11 FIELDS                   │
+├─────────────────────────────────────────────────────────────────┤
+│  1. _id              │  7. environment                          │
+│  2. name             │  8. settings                             │
+│  3. apiKey           │  9. createdAt                            │
+│  4. apiSecret        │ 10. updatedAt                            │
+│  5. webhookSecret    │ 11. __v                                  │
+│  6. isActive         │                                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                  SETTING MODEL - 7 FIELDS                        │
+├─────────────────────────────────────────────────────────────────┤
+│  1. _id              │  5. createdAt                            │
+│  2. orgName          │  6. updatedAt                            │
+│  3. currency         │  7. __v                                  │
+│  4. notifEmail       │                                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│               NOTIFICATION MODEL - 10 FIELDS                     │
+├─────────────────────────────────────────────────────────────────┤
+│  1. _id              │  6. isRead                               │
+│  2. userId           │  7. metadata                             │
+│  3. title            │  8. createdAt                            │
+│  4. message          │  9. updatedAt                            │
+│  5. type             │ 10. __v                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                ACTIVITY LOG MODEL - 10 FIELDS                    │
+├─────────────────────────────────────────────────────────────────┤
+│  1. _id              │  6. timestamp                            │
+│  2. userId           │  7. createdAt                            │
+│  3. action           │  8. updatedAt                            │
+│  4. module           │  9. __v                                  │
+│  5. ipAddress        │ 10. details                              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│               ACCESS REQUEST MODEL - 12 FIELDS                   │
+├─────────────────────────────────────────────────────────────────┤
+│  1. _id              │  7. requestedRole                        │
+│  2. fullName         │  8. status                               │
+│  3. email            │  9. adminNotes                           │
+│  4. phone            │ 10. createdAt                            │
+│  5. department       │ 11. updatedAt                            │
+│  6. message          │ 12. __v                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                   REPORT MODEL - 8 FIELDS                        │
+├─────────────────────────────────────────────────────────────────┤
+│  1. _id              │  5. createdAt                            │
+│  2. reportType       │  6. updatedAt                            │
+│  3. schedule         │  7. __v                                  │
+│  4. format           │  8. userId                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                  SESSION MODEL - 11 FIELDS                       │
+├─────────────────────────────────────────────────────────────────┤
+│  1. _id              │  7. lastActivity                         │
+│  2. userId           │  8. createdAt                            │
+│  3. ipAddress        │  9. updatedAt                            │
+│  4. userAgent        │ 10. __v                                  │
+│  5. status           │ 11. logoutAt                             │
+│  6. loginAt          │                                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+

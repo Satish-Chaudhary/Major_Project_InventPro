@@ -10,6 +10,11 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
+import { useAppDispatch, useAppSelector } from '../redux/hooks';
+import { selectUser } from '../redux/slices/authSlice';
+import { useSocketContext } from '../context/SocketContext';
+import { getStatusBadge } from '../utils/badgeStyles.jsx';
+import { ROLES } from '../config/permissions';
 import { useNavigate } from 'react-router-dom';
 import { 
     useGetUsersQuery, 
@@ -17,7 +22,6 @@ import {
     useDeleteUserMutation,
     useDeleteRoleMutation 
 } from '../redux/slices/adminSlice';
-import { getStatusBadge } from '../utils/badgeStyles.jsx';
 
 const permissionDescriptions = {
     'create_product': 'Allows creating new inventory items',
@@ -33,10 +37,12 @@ const permissionDescriptions = {
 
 const UserManagement = () => {
     const navigate = useNavigate();
+    const currentUser = useAppSelector(selectUser);
     const { data: usersData, isLoading: usersLoading } = useGetUsersQuery();
     const { data: rolesData } = useGetRolesQuery();
     const [deleteUser] = useDeleteUserMutation();
     const [deleteRole] = useDeleteRoleMutation();
+    const { onlineUsers } = useSocketContext();
 
     const users = usersData?.users || [];
     const allRoles = rolesData?.roles || [];
@@ -158,47 +164,64 @@ const UserManagement = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-800">
-                                    {filteredUsers.map(u => (
-                                        <tr key={u._id} className="hover:bg-slate-800/30 transition-colors group">
-                                            <td className="px-8 py-5"><input type="checkbox" className="rounded bg-slate-900 border-slate-700" /></td>
-                                            <td className="px-8 py-5">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-slate-700 p-0.5 group-hover:border-purple-500/30 transition-all">
-                                                        <img src={`https://i.pravatar.cc/100?u=${u.email}`} alt={u.fullName} className="w-full h-full rounded-full grayscale group-hover:grayscale-0 transition-all" />
+                                    {filteredUsers.map(u => {
+                                        const isRoot = u.role?.toLowerCase() === 'root';
+                                        const isAdminViewingRoot = currentUser?.role?.toLowerCase() === 'admin' && isRoot;
+
+                                        return (
+                                            <tr key={u._id} className="hover:bg-slate-800/30 transition-colors group">
+                                                <td className="px-8 py-5"><input type="checkbox" className="rounded bg-slate-900 border-slate-700" disabled={isAdminViewingRoot} /></td>
+                                                <td className="px-8 py-5">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="relative w-10 h-10 rounded-full bg-slate-800 border-2 border-slate-700 p-0.5 group-hover:border-purple-500/30 transition-all">
+                                                            <img src={`https://i.pravatar.cc/100?u=${u.email}`} alt={u.fullName} className="w-full h-full rounded-full grayscale group-hover:grayscale-0 transition-all" />
+                                                            {onlineUsers.includes(u._id) && (
+                                                                <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse" />
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-white font-bold text-sm leading-tight">{u.fullName}</p>
+                                                            <p className="text-slate-500 text-xs font-medium md:max-w-[150px] truncate">{isAdminViewingRoot ? "••••••••••••" : u.email}</p>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <p className="text-white font-bold text-sm leading-tight">{u.fullName}</p>
-                                                        <p className="text-slate-500 text-xs font-medium md:max-w-[150px] truncate">{u.email}</p>
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-slate-700/50 bg-slate-800/30 shadow-inner text-slate-400">
+                                                        {isRoot ? <ShieldAlert className="w-3 h-3 text-purple-400" /> : u.role === 'admin' ? <ShieldCheck className="w-3 h-3 text-cyan-400" /> : <User className="w-3 h-3" />}
+                                                        {isAdminViewingRoot ? "Elevated Clearance" : u.role}
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-5">
-                                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-slate-700/50 bg-slate-800/30 shadow-inner text-slate-400">
-                                                    {u.role === 'Administrator' ? <ShieldCheck className="w-3 h-3" /> : <User className="w-3 h-3" />}
-                                                    {u.role}
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-5">
-                                                {getStatusBadge(u.status)}
-                                            </td>
-                                            <td className="px-8 py-5 text-xs text-slate-300 font-medium">
-                                                {u.updatedAt ? format(new Date(u.updatedAt), 'MMM dd, HH:mm') : 'N/A'}
-                                            </td>
-                                            <td className="px-8 py-5 text-right">
-                                                <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button className="p-2 text-slate-500 hover:text-cyan-400 hover:bg-cyan-400/10 rounded-lg transition-all"><Edit2 className="w-4 h-4" /></button>
-                                                    <button
-                                                        onClick={() => {
-                                                            if (window.confirm('Delete this user?')) deleteUser(u._id);
-                                                        }}
-                                                        className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    {getStatusBadge(u.status)}
+                                                </td>
+                                                <td className="px-8 py-5 text-xs text-slate-300 font-medium">
+                                                    {u.updatedAt ? format(new Date(u.updatedAt), 'MMM dd, HH:mm') : 'N/A'}
+                                                </td>
+                                                <td className="px-8 py-5 text-right">
+                                                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        {!isAdminViewingRoot && (
+                                                            <>
+                                                                <button className="p-2 text-slate-500 hover:text-cyan-400 hover:bg-cyan-400/10 rounded-lg transition-all"><Edit2 className="w-4 h-4" /></button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        if (window.confirm('Delete this user?')) deleteUser(u._id);
+                                                                    }}
+                                                                    className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                        {isAdminViewingRoot && (
+                                                            <div className="p-2 text-slate-600 cursor-not-allowed">
+                                                                <ShieldAlert className="w-4 h-4" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -302,7 +325,13 @@ const UserManagement = () => {
                                             className="border-t border-slate-800/60 bg-slate-950/20"
                                         >
                                             <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                {role.permissions?.map((perm, idx) => (
+                                                {currentUser?.role?.toLowerCase() === 'admin' && role.name?.toLowerCase() === 'root' ? (
+                                                    <div className="col-span-full py-8 text-center bg-slate-900/60 rounded-2xl border border-dashed border-red-500/20">
+                                                        <ShieldAlert className="w-8 h-8 text-red-500/40 mx-auto mb-3" />
+                                                        <p className="text-red-400 text-[10px] font-black uppercase tracking-[0.2em]">Security Protocol: Access Restricted</p>
+                                                        <p className="text-slate-500 text-[9px] mt-1 font-bold uppercase">Administrator cannot view root account permissions</p>
+                                                    </div>
+                                                ) : role.permissions?.map((perm, idx) => (
                                                     <div key={idx} className="flex gap-4 p-4 bg-slate-900/40 border border-slate-800 rounded-2xl group/perm hover:border-purple-500/30 transition-all">
                                                         <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0 border border-purple-500/20">
                                                             <Key className="w-4 h-4 text-purple-400" />
@@ -313,7 +342,7 @@ const UserManagement = () => {
                                                         </div>
                                                     </div>
                                                 ))}
-                                                {(!role.permissions || role.permissions.length === 0) && (
+                                                {(!role.permissions || role.permissions.length === 0) && (!(currentUser?.role?.toLowerCase() === 'admin' && role.name?.toLowerCase() === 'root')) && (
                                                     <div className="col-span-full py-8 text-center">
                                                         <p className="text-slate-600 text-[10px] font-black uppercase tracking-widest">No permissions assigned</p>
                                                     </div>

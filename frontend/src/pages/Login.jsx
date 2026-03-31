@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Mail, ArrowRight, Eye, ShieldCheck, EyeOff } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Eye, ShieldCheck, EyeOff, KeyRound } from 'lucide-react';
 import InventProLogo from '../components/layout/InventProLogo';
 import { toast } from 'react-hot-toast';
 import { ClipLoader } from 'react-spinners';
@@ -32,13 +32,26 @@ const Login = () => {
 
     const handleLogin = async (e, type) => {
         e.preventDefault();
-        const action = await dispatch(login({ email, password }));
+        const loginType = type; // 'admin' or 'staff'
+        const action = await dispatch(login({ email, password, loginType }));
         if (login.fulfilled.match(action)) {
             toast.success(`Welcome back, ${action.payload.user.fullName}!`);
             navigate('/dashboard');
         } else {
-            toast.error(action.payload?.message || "Login failed");
-            console.log(action.payload?.message);
+            const msg = action.payload?.message || 'Login failed';
+            if (msg === 'Approval Pending') {
+                toast(' Your account is awaiting admin approval. Please check back later.', { icon: '🕐', style: { background: '#1e293b', color: '#94a3b8' } });
+            } else if (msg === 'Account Inactive') {
+                toast.error(' Your account has been deactivated. Contact your administrator.');
+            } else if (msg === 'Request Denied') {
+                toast.error(' Your access request was denied. Contact your administrator.');
+            } else if (msg.includes('Staff accounts must use the Staff Portal')) {
+                toast.error(' Staff accounts must log in via the Staff Portal.');
+            } else if (msg.includes('Admin accounts must use the Admin Portal')) {
+                toast.error(' Admin accounts must log in via the Admin Portal.');
+            } else {
+                toast.error(msg);
+            }
         }
     };
 
@@ -133,6 +146,18 @@ const Login = () => {
                                     >
                                         {loading ? <ClipLoader color='#fff' size={24} /> : <>Secure Login <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" /></>}
                                     </button>
+
+                                    {/* Forgot Password Link */}
+                                    <div className="text-center pt-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate('/reset-password')}
+                                            className="text-slate-500 hover:text-purple-400 text-[11px] font-bold uppercase tracking-[0.15em] transition-colors flex items-center justify-center gap-1.5 mx-auto group"
+                                        >
+                                            <KeyRound className="w-3.5 h-3.5 group-hover:rotate-12 transition-transform" />
+                                            Forgot Password?
+                                        </button>
+                                    </div>
                                 </form>
                             </div>
                         </motion.div>

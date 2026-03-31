@@ -101,90 +101,63 @@ graph TD
         %% Admin Dashboard Operations
         AdminDashboard --> AdminActions{Select Action}
         AdminActions -->|User Management| UserMgmt[User Management]
-        AdminActions -->|Approvals| ApprovalDesk[Approval Desk]
+        AdminActions -->|Approvals| ApprovalDesk[Approval DeskDesk]
         AdminActions -->|Settings| SysSettings[System Settings]
-        AdminActions -->|Analytics| SysAnalytics[System Analytics]
+        AdminActions -->|Security Audit| SecAudit[Security & Audit Logs]
         
         %% Manager Dashboard Operations
         ManagerDashboard --> ManagerActions{Select Action}
         ManagerActions -->|Inventory| InvMgmt[Inventory Management]
+        ManagerActions -->|Categories| CatMgmt[Category Management]
+        ManagerActions -->|Vendors| VendorRegistry[Vendor Registry]
         ManagerActions -->|Reports| ViewReports[View Reports]
-        ManagerActions -->|Team| TeamOversight[Team Oversight]
         
         %% Staff Dashboard Operations
         StaffDashboard --> StaffActions{Select Action}
         StaffActions -->|Update Stock| StockUpdate[Stock Update]
-        StaffActions -->|View Inventory| ViewInv[View Inventory]
+        StaffActions -->|Movements| StockMoves[Stock Movements]
         
         %% Sales Dashboard Operations
         SalesDashboard --> SalesActions{Select Action}
-        SalesActions -->|Create Order| CreateOrder[New Order]
-        SalesActions -->|View Products| BrowseProd[Browse Products]
-        SalesActions -->|Sales Metrics| ViewMetrics[View Metrics]
+        SalesActions -->|POS / Cart| POCart[POS Shopping Cart]
+        SalesActions -->|Customer CRM| CRM_Hub[Customer CRM]
+        SalesActions -->|Sales Orders| S_Orders[Sales Orders List]
         
         %% Accountant Dashboard Operations
         AccountantDashboard --> AccountantActions{Select Action}
-        AccountantActions -->|Financial Reports| FinReports[Generate Reports]
-        AccountantActions -->|Audit Trail| ViewAudit[View Audit Log]
-        AccountantActions -->|Cost Analysis| CostAnalysis[Cost Analysis]
+        AccountantActions -->|Billing| InvBilling[Invoices & Billing]
+        AccountantActions -->|Financials| FinReports[Generate Reports]
+        AccountantActions -->|Audit| ViewAudit[View Audit Log]
     end
 
     %% CRUD Operations with Success/Failure
     subgraph CRUD_Ops [Transaction Workflows]
         %% Add Product Flow
-        InvMgmt --> AddProduct[Add Product Form]
+        InvMgmt --> AddProduct[Add Product Modal]
         AddProduct --> ValidateProduct{Validate Data}
         ValidateProduct -->|✅ Success| SaveProduct{Save to DB}
-        ValidateProduct -->|❌ Failure| ProductError[Show Validation Errors]
-        ProductError -->|Fix| AddProduct
         
-        SaveProduct -->|✅ Success| ProductSuccess[Product Added ✓]
-        SaveProduct -->|❌ Failure| ProductDBError[Database Error]
-        ProductDBError -->|Retry| SaveProduct
-        
-        %% Create Order Flow
-        CreateOrder --> SelectItems[Select Products]
-        SelectItems --> ValidateStock{Check Stock}
-        ValidateStock -->|✅ Available| ProcessOrder{Process Payment}
-        ValidateStock -->|❌ Out of Stock| StockAlert[Low Stock Alert]
-        StockAlert -->|Adjust Order| SelectItems
-        
-        ProcessOrder -->|✅ Success| OrderConfirm[Order Confirmed ✓]
-        ProcessOrder -->|❌ Failure| PaymentError[Payment Failed]
-        PaymentError -->|Try Again| ProcessOrder
+        %% POS / Sales Flow
+        POCart --> Checkout[Checkout Terminal]
+        Checkout --> PayGateway{Process Payment}
+        PayGateway -->|✅ Paid| GenInvoice[Generate Invoice PDF]
         
         %% Approval Flow
         ApprovalDesk --> ViewRequest[View Pending Request]
         ViewRequest --> Decision{Approve or Reject?}
         Decision -->|✅ Approve| AssignRole[Assign Role]
-        Decision -->|❌ Reject| RejectReason[Add Rejection Reason]
-        
-        AssignRole --> SaveAssignment{Save Assignment}
-        SaveAssignment -->|✅ Success| NotifyUser[Notify User ✓]
-        SaveAssignment -->|❌ Failure| AssignmentError[Save Failed]
-        AssignmentError -->|Retry| AssignRole
-        
-        RejectReason --> SaveRejection{Save Rejection}
-        SaveRejection -->|✅ Success| NotifyRejection[Notify User of Rejection]
-        SaveRejection -->|❌ Failure| RejectionError[Save Failed]
-        RejectionError -->|Retry| RejectReason
     end
 
     %% Logout Flow
     AdminDashboard -->|Logout| Logout{Confirm Logout?}
     ManagerDashboard -->|Logout| Logout
-    StaffDashboard -->|Logout| Logout
-    SalesDashboard -->|Logout| Logout
-    AccountantDashboard -->|Logout| Logout
-    
     Logout -->|✅ Yes| LoginPage
-    Logout -->|❌ No| ReturnToDash[Return to Dashboard]
 
     %% Success Path Connections
-    ProductSuccess -->|Continue| InvMgmt
-    OrderConfirm -->|Continue| SalesDashboard
-    NotifyUser -->|Back to| ApprovalDesk
-    NotifyRejection -->|Back to| ApprovalDesk
+    GenInvoice -->|Redirect| SO_DET[Sales Order Details]
+    SO_DET -->|Review| InvBilling
+    SaveProduct -->|Update| InvMgmt
+    AssignRole -->|Notify| UserMgmt
 
     %% Styling for Professional Look
     classDef success fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
@@ -203,6 +176,110 @@ graph TD
     class Start,LoginPage,PasswordReset,ForgotPass,RequestForm terminal
     class SendAdminEmail,SendUserWaiting,SendApprovalEmail,SendRejectionEmail email
 ```
+
+## Real-Time Synchronization Workflow (Phase 9)
+
+**Objective**: Absolute data consistency across all connected clients without page refreshes.
+
+```mermaid
+graph TD
+    %% Real-Time Infrastructure
+    subgraph RTC [Socket.IO Connectivity]
+        Client1[Frontend Client A]
+        Client2[Frontend Client B]
+        SocketServer{Socket.IO Server}
+        
+        Client1 -- "Authenticate (JWT)" --> SocketServer
+        Client2 -- "Authenticate (JWT)" --> SocketServer
+        
+        SocketServer -- "Room: role:admin" --> Client1
+        SocketServer -- "Room: role:manager" --> Client2
+    end
+
+    %% Event Flow
+    subgraph Event_Propagation [Event Life-cycle]
+        Action[User Action: Update Stock/Order] --> BackendController[Express Controller]
+        BackendController --> DB_Update[(Update MongoDB)]
+        BackendController --> EmitEvent[Emit Event via Socket.IO]
+        
+        EmitEvent -->|Broadcast| SocketServer
+        SocketServer -->|Push| PushStock[stock:updated]
+        SocketServer -->|Push| PushOrder[order:updated]
+        SocketServer -->|Push| PushNotify[new:notification]
+    end
+
+    %% Frontend Reaction
+    subgraph UI_Reaction [Frontend Sync]
+        PushStock --> InvalidateP[Invalidate RTK Product Cache]
+        PushOrder --> InvalidateO[Invalidate RTK Order Cache]
+        PushNotify --> InvalidateN[Invalidate Notification Badge]
+        
+        InvalidateP --> LiveToast[Show Live Sync Toast]
+        LiveToast --> UI_Refresh[UI Components Auto-Refetch]
+    end
+
+    %% Status Indicators
+    subgraph Presence [User Presence]
+        OnConnect[Client Connects] --> UpdateMap[Update UserSocketMap]
+        UpdateMap --> BroadcastOnline[Emit getOnlineUsers]
+        BroadcastOnline --> PulseIndicator[Show Green Pulse on Avatars]
+    end
+
+    %% Styling
+    classDef socket fill:#000,stroke:#8b5cf6,stroke-width:2px,color:#fff
+    classDef event fill:#1e1b4b,stroke:#4f46e5,stroke-width:1px,color:#fff
+    classDef react fill:#064e3b,stroke:#10b981,stroke-width:1px,color:#fff
+    
+    class SocketServer socket
+    class PushStock,PushOrder,PushNotify event
+    class InvalidateP,InvalidateO,InvalidateN,UI_Refresh react
+```
+
+## Payment & Billing Workflow (Phase 10)
+
+**Objective**: Complete transactional lifecycle from cart to professional invoice delivery.
+
+```mermaid
+graph TD
+    %% Sales Flow
+    subgraph Sales_Cycle [Order Creation]
+        Cart[Shopping Cart] --> Checkout[Checkout Process]
+        Checkout --> CustInfo[Enter Customer Details]
+        CustInfo --> PayMethod{Select Payment Method}
+    end
+
+    %% Payment Processing
+    subgraph Payment_Processing [Gateway Integration]
+        PayMethod -->|Card/UPI| Intent[Create Payment Intent]
+        Intent --> Gateway{Stripe / Razorpay}
+        Gateway -->|✅ Authorized| Success[Payment Success]
+        Gateway -->|❌ Declined| Failure[Payment Failed]
+        
+        PayMethod -->|Cash/Credit| ManualAuth[Manual Confirmation]
+    end
+
+    %% Fulfillment & Billing
+    subgraph Billing_System [Fulfillment & Invoicing]
+        Success --> DB_Payment[Save Payment Record]
+        DB_Payment --> SO_Update[Update SalesOrder Status]
+        SO_Update --> StockSync[Deduct Inventory Stock]
+        
+        SO_Update --> InvoiceGen[Generate Invoice PDF]
+        InvoiceGen --> EmailSystem[Send Receipt & Invoice Email]
+        
+        EmailSystem --> OrderTracking[Order Status: Confirmed]
+    end
+
+    %% Styling
+    classDef money fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff
+    classDef doc fill:#1e1b4b,stroke:#4f46e5,stroke-width:2px,color:#fff
+    classDef gate fill:#7f1d1d,stroke:#ef4444,stroke-width:2px,color:#fff
+    
+    class Success,DB_Payment,StockSync money
+    class InvoiceGen,EmailSystem,OrderTracking doc
+    class Gateway gate
+```
+
 
 ## Detailed Connectivity Matrix
 
@@ -223,6 +300,12 @@ graph TD
 | **Inventory** | Add Product | Add Product Page | Action: Opens product creation form |
 | **Orders** | Create Order | Select Items | Logic: Real-time stock availability check |
 | **Dashboards** | Logout | Confirm Logout | Action: JWT destruction & redirect |
+| **User Profile** | Click Avatar | Settings/Profile | Navigation: Manage personal info |
+| **Inventory** | Stock Drops | Low Stock Alert | Trigger: Socket.IO broadcast to Managers |
+| **Checkout** | Complete Pay | Success Page | Logic: Create Payment -> Gen Invoice -> PDF |
+| **Users** | View Database | Online Status | Logic: Socket map (Green pulse indicator) |
+| **Notifications**| Click Alert | Source Page | Navigation: Jump to Order/Product detail |
+| **System** | Any Change | Dashboard Sync | Logic: RTK Tag Invalidation via Socket events |
 
 ## Website Logic & Algorithms
 
@@ -275,7 +358,25 @@ graph TD
 3.  **Inventory Sync**: Automatically deduct `initialQty` based on order volume.
 4.  **Notification**: Trigger "Shortage Alert" if stock drops below threshold post-order.
 
-### 3. Settings & Personalization
+### 5. Payment Gateway & Transaction Security
+**Objective**: Secure, multi-channel payment processing with automated reconciliation.
+
+1.  **Intent Creation**: System creates a unique `PaymentIntent` via Stripe or Razorpay.
+2.  **Validation**: Gateway verifies card/UPI details and processes transaction.
+3.  **Callback / Webhook**:
+    *   **Success**: Backend receives confirmation -> Updates `SalesOrder` to `paid` -> Triggers `Invoice` generation.
+    *   **Failure**: Notifies user -> Maintains order as `pending` -> Allows retry.
+4.  **Reconciliation**: `payment.service.js` matches transaction ID to Sales Order for accounting accuracy.
+
+### 6. Real-Time Event Architecture (Socket.IO)
+**Objective**: Eliminate manual refreshes by pushing data directly to the client.
+
+1.  **Connection**: User connects with JWT -> Server joins user to role-based rooms (e.g., `role:manager`).
+2.  **Trigger**: Any data mutation (Stock/Order) emits an event from the controller.
+3.  **Broadcast**: `socket.js` pushes the event to relevant rooms.
+4.  **Action**: Frontend hook (`useRealTimeUpdates.js`) catches event -> Calls `invalidateTags` -> RTK Query re-fetches only the affected data.
+
+### 7. Settings & Personalization
 *   **Profile**: Update name, bio, and profile picture.
 *   **System Settings**: Toggle notifications, change theme preferences, or update business details.
 
@@ -454,12 +555,103 @@ graph TD
 
 ---
 
+## V. Comprehensive Page & Form Connectivity (Hinglish Theory)
+
+InventPro ka ecosystem kaafia interconnected hai, jisme saare modules ek doosre se networked hain. Niche di gayi description se aap navigate karna aur forms ke connections samajh sakte hain:
+
+### 1. The Global Connectivity Block Diagram (All Pages Included)
+```mermaid
+graph TD
+    %% Public/Entry Points
+    Start((Start)) --> Login[Login Portal]
+    Login --> REQ[Request Access Form]
+    Login --> PWD[Reset Password / OTP]
+    Login --> R_ROOT[Register Root Admin]
+    Login --> R_ADMIN[Register Admin]
+    
+    %% Authenticated Hub
+    Login -->|Authenticated| Main[Main Layout Hub]
+    
+    subgraph Dashboard_Center [Dashboards & Analytics]
+        Main --> DASH[General Dashboard]
+        Main --> A_DASH[Admin Dashboard]
+        Main --> ANALYTICS[Real-time Analytics]
+        Main --> REPS[Advanced Reports]
+    end
+
+    subgraph Inventory_Module [Inventory & Stock Management]
+        Main --> INV[Inventory Management]
+        INV --> MODAL[Add/Edit Product Modal]
+        Main --> CAT_M[Category Management]
+        CAT_M --> A_CAT[Add Category Form]
+        Main --> STOCK_M[Stock Movements]
+        STOCK_M --> A_ORD[Add Order Form]
+        STOCK_M --> O_DET[Order Details Page]
+    end
+
+    subgraph Sales_Billing [Sales, POS & Billing]
+        INV -->|Action| CART[Shopping Cart POS]
+        Main --> CART
+        CART --> CHK[Checkout Terminal]
+        CHK --> SO[Sales Orders List]
+        SO --> SO_DET[Sales Order Details]
+        Main --> INVC[Billing & Invoices]
+        INVC --> SO_DET
+    end
+
+    subgraph CRM_Vendors [CRM & Vendor Registry]
+        Main --> CUST[Customer CRM]
+        CUST --> A_CUST[Add/Edit Customer Form]
+        Main --> VEND[Vendor Registry]
+        VEND --> A_SUP[Add Supplier Form]
+        Main --> PO[Purchase Orders PO]
+        PO --> C_PO[Create PO Form]
+    end
+
+    subgraph Admin_Security [System Admin & Security]
+        Main --> U_MGT[User Management]
+        U_MGT --> A_USER[Add User Form]
+        Main --> U_APP[Staff Approvals]
+        Main --> ROLES[Roles & Security Audit]
+        ROLES --> A_ROLE[Add Role Form]
+        Main --> AUDIT[System Audit Logs]
+        Main --> SET[System Settings]
+        Main --> PROF[User Profile Settings]
+        Main --> SEC[Security Dashboard]
+    end
+
+    Main -->|Unauthorized| UNAUTH[Unauthorized Access Page]
+```
+
+### 2. The Gateway & Onboarding Flow (Onboarding Kaise Hoga?)
+*   **The Main Gate (Login)**: Sabse pehle aap Login page pe aayenge. Agar aapka account nahi hai, to **Request Access Form** fill karke admin ko bhejenge. Password bhul gaye? To **Reset Password (OTP)** step-by-step guidance provide karega.
+*   **Initialization**: Naye business units ke liye **Register Root** aur **Register Admin** pages diye gaye hain. Unauthorized access hone par user automatically **Unauthorized Page** par redirect ho jata hai.
+
+### 3. Inventory Aur Stock Ka Pura Network
+*   **Products & Categories**: **Inventory Management** page se aap stock monitor karte hain. **Add Product Modal** se naya item dalte hain. Items ko organize karne ke liye **Category Management** aur **Add Category** pages use hote hain.
+*   **Stock Movements**: Har transaction (In/Out) ke liye **Stock Movements (Orders)** page hai. Naye adjustment ke liye **Add Order** form aur purane details ke liye **Order Details** page connected hain.
+
+### 4. Sales, POS Se Invoice Tak
+*   **Commercial Path**: Inventory se item directly **Shopping Cart** mein add karein. Phir **Checkout Terminal** par jakar payment process karein.
+*   **Order Tracking**: Transaction complete hote hi **Sales Orders** list mein entry ho jayegi. **Sales Order Details** page se aap workflow manage kar sakte hain. Saara billing data **Billing & Invoices** page par sync hota hai jahan se original orders ki deep-linking di gayi hai.
+
+### 5. CRM, Vendors Aur Procurement
+*   **Entity Management**: Customers ka pura database **Customer CRM** aur **Add/Edit Customer Form** handle karega. Supplier details ke liye **Vendor Registry / Add Supplier** modules hain.
+*   **Ordering Stock**: Naya stock mangwane ke liye **Purchase Orders** aur **Create PO Form** ka connectivity di gayi hai.
+
+### 6. Administration, Security & Analytics
+*   **Control Center**: Admin **User Management (Add User)** aur **Staff Approvals** se team handle karta hai. **Roles & Security (Add Role)** aur **Security Dashboard** se access control manage hota hai.
+*   **Audit & Settings**: Pura system logs **Audit Logs** mein save hote hain. Personal data ke liye **User Profile** aur global config ke liye **System Settings** page hai.
+*   **Decision Making**: Dashboards (**General & Admin**) aur analytics (**Analytics & Reports**) modules pure business ka 360-degree view provide karte hain.
+
+---
+
 ## Technical Flow Summary
-1.  **Request**: User interacts with the React Frontend (Vite).
+1.  **Request**: User interacts with the React Frontend (Vite) across 37+ specialized pages.
 2.  **State Management**: Redux Toolkit manages the global application state and user session.
 3.  **Authentication**: Middleware checks for valid JWT stored in a secure cookie.
 4.  **Data Fetching**: RTK Query handles all API communications with automated caching and invalidation.
-5.  **Action**: Backend (Node/Express) processes business logic and permission enforcement.
+5.  **Action**: Backend (Node/Express) processes business logic and permission enforcement for all modules.
 6.  **Persistence**: Data is saved/retrieved from MongoDB.
 7.  **Feedback**: The UI updates dynamically via Redux selectors and displays real-time Toast notifications.
 

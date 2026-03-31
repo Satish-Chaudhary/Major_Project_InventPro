@@ -4,7 +4,7 @@ import { serverUrl } from '../../config/api.js'
 export const activityApi = createApi({
   reducerPath: 'activityApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: serverUrl + '/api',
+    baseUrl: serverUrl + '/api/admin',
     prepareHeaders: (headers, { getState }) => {
       const token = getState().auth.token
       if (token) {
@@ -17,13 +17,19 @@ export const activityApi = createApi({
   endpoints: (builder) => ({
     getActivities: builder.query({
       query: (params) => ({
-        url: '/activities/all',
+        url: '/audit-logs/all',
         params,
+      }),
+      transformResponse: (response) => ({
+          activities: response.logs || []
       }),
       providesTags: ['Activity'],
     }),
     getSystemActivities: builder.query({
-      query: () => '/activities/system',
+      query: () => '/audit-logs/all', // Point to the same endpoint for now
+      transformResponse: (response) => ({
+          activities: response.logs?.filter(l => l.module === 'system') || []
+      }),
       providesTags: ['Activity'],
     }),
   }),

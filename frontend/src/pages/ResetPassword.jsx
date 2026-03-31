@@ -11,6 +11,8 @@ import InventProLogo from '../components/layout/InventProLogo';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { serverUrl } from '../config/api';
+import { toast } from 'react-hot-toast';
+import { ClipLoader } from 'react-spinners';
 
 const ResetPassword = () => {
     const navigate = useNavigate();
@@ -43,12 +45,14 @@ const ResetPassword = () => {
 
             if (response.data.success) {
                 setStep(2);
+                toast.success('OTP sent! Check your email.');
             }
             setLoading(false);
 
         } catch (error) {
-            console.log(error)
-            setErr(error.message);
+            const msg = error.response?.data?.message || error.message;
+            setErr(msg);
+            toast.error(msg);
             setLoading(false);
         }
     }
@@ -61,11 +65,13 @@ const ResetPassword = () => {
             const response = await axios.post(`${serverUrl}/api/auth/verify-otp`, { email, otp }, { withCredentials: true });
             if (response.data.success) {
                 setStep(3);
+                toast.success('OTP verified! Set your new password.');
             }
             setLoading(false);
         } catch (error) {
-            console.log(error)
-            setErr(error.message);
+            const msg = error.response?.data?.message || error.message;
+            setErr(msg);
+            toast.error(msg);
             setLoading(false);
         }
     }
@@ -73,19 +79,21 @@ const ResetPassword = () => {
     // Step - 3 Reset Password
     const resetPassword = async () => {
         if (password !== confirmPassword) {
-            return setErr("Password doesn't Match.");
+            return setErr("Password doesn't match.");
         }
         setLoading(true);
         setErr('');
         try {
             const response = await axios.post(`${serverUrl}/api/auth/reset-password`, { email, password, confirmPassword }, { withCredentials: true });
             if (response.data.success) {
+                toast.success('Password reset successfully! Please log in.');
                 navigate('/login');
             }
             setLoading(false);
         } catch (error) {
-            console.log(error)
-            setErr(error.message);
+            const msg = error.response?.data?.message || error.message;
+            setErr(msg);
+            toast.error(msg);
             setLoading(false);
         }
     }
@@ -214,7 +222,14 @@ const ResetPassword = () => {
                                         <ShieldCheck className="w-5 h-5 group-hover:scale-110 transition-transform" />
                                     </button>
                                     <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                                        Didn't receive code? <button className="text-cyan-400 hover:text-cyan-300 transition-colors ml-1">Resend</button>
+                                        Didn't receive code?{' '}
+                                        <button
+                                            type="button"
+                                            onClick={() => { setOtp(''); sendOtp(); }}
+                                            className="text-cyan-400 hover:text-cyan-300 transition-colors ml-1"
+                                        >
+                                            Resend
+                                        </button>
                                     </p>
                                 </div>
                             </motion.div>

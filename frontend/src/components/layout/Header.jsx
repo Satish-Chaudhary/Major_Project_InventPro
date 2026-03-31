@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Package, AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { Bell, Package, AlertTriangle, CheckCircle, Info, ShoppingCart } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
 import Notification from './Notification.jsx';
@@ -8,6 +8,8 @@ import SideNavHeader from './SideNavHeader.jsx';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { useGetActivitiesQuery } from '../../redux/slices/activitySlice';
 import { selectLastReadAuditTime, clearAuditNotifications } from '../../redux/slices/uiSlice';
+import { selectCartCount } from '../../redux/slices/cartSlice';
+import { useNavigate } from 'react-router-dom';
 
 const NotificationTicker = () => {
     const { data: activityData } = useGetActivitiesQuery({ limit: 10 });
@@ -60,8 +62,9 @@ const Header = () => {
     const { data: activityData } = useGetActivitiesQuery({ limit: 10 });
     const auditLogs = activityData?.activities || [];
     const lastReadTime = useAppSelector(selectLastReadAuditTime);
+    const cartCount = useAppSelector(selectCartCount);
     const notifications = auditLogs.filter(log => new Date(log.createdAt).getTime() > lastReadTime);
-    
+    const navigate = useNavigate();
     const [showNotifications, setShowNotifications] = useState(false);
     const notificationRef = useRef(null);
 
@@ -89,7 +92,21 @@ const Header = () => {
                 {/* Replaced SearchBar with NotificationTicker */}
                 <NotificationTicker />
 
-                <div className="relative" ref={notificationRef}>
+                <div className="flex items-center gap-4">
+                    <button 
+                        onClick={() => navigate('/cart')}
+                        className="relative p-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-400 hover:text-white hover:border-indigo-500/50 transition-all group"
+                        title="Shopping Cart"
+                    >
+                        <ShoppingCart className="w-5 h-5 transition-transform group-active:scale-90" />
+                        {cartCount > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-indigo-600 text-white text-[10px] font-black min-w-4 h-4 px-1 rounded-full flex items-center justify-center border-2 border-[#0a0a0a]">
+                                {cartCount}
+                            </span>
+                        )}
+                    </button>
+
+                    <div className="relative" ref={notificationRef}>
                     <Notification 
                         notifications={notifications} 
                         setShowNotifications={setShowNotifications} 
@@ -106,8 +123,9 @@ const Header = () => {
                     </AnimatePresence>
                 </div>
             </div>
-        </header>
-    );
+        </div>
+    </header>
+);
 };
 
 export default Header;

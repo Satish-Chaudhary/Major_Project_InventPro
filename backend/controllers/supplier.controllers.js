@@ -1,4 +1,5 @@
 import Supplier from "../models/supplier.model.js";
+import PurchaseOrder from "../models/purchaseOrder.model.js";
 import { logActivity } from "../utils/logger.utils.js";
 
 // @desc    Add a new supplier
@@ -46,11 +47,25 @@ export const updateSupplier = async (req, res) => {
     }
 };
 
-// @desc    Delete a supplier
+// @desc    Delete a supplier (with active PO check)
 // @route   DELETE /api/suppliers/delete/:id
 export const deleteSupplier = async (req, res) => {
     try {
         const { id } = req.params;
+
+        // Block if active purchase orders exist for this supplier
+        const activePOs = await PurchaseOrder.countDocuments({
+            supplier: id,
+            status: { $nin: ['received', 'cancelled'] }
+        });
+
+        if (activePOs > 0) {
+            return res.status(400).json({
+                success: false,
+                message: `Cannot delete: supplier has ${activePOs} active purchase order(s). Complete or cancel them first.`
+            });
+        }
+
         const supplier = await Supplier.findByIdAndDelete(id);
         if (!supplier) return res.status(404).json({ success: false, message: "Supplier not found" });
 
@@ -62,3 +77,4 @@ export const deleteSupplier = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+

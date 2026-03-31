@@ -6,12 +6,15 @@ import { BrowserRouter } from 'react-router-dom'
 import { Provider } from 'react-redux'
 import { PersistGate } from 'redux-persist/integration/react'
 import { store, persistor } from './redux/store'
+import { SocketContextProvider } from './context/SocketContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
-        <App />
+        <SocketContextProvider>
+          <App />
+        </SocketContextProvider>
       </PersistGate>
     </Provider>
   </BrowserRouter>

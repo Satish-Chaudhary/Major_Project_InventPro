@@ -13,8 +13,10 @@ import { useGetSummaryReportQuery } from '../redux/slices/reportSlice';
 import { useGetProductsQuery } from '../redux/slices/productSlice';
 import { getStatusBadge } from '../utils/statusBadges';
 import { useGetActivitiesQuery } from '../redux/slices/activitySlice';
+import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
+    const navigate = useNavigate();
     const user = useAppSelector(selectUser);
     const { data: summaryResponse, isLoading: summaryLoading } = useGetSummaryReportQuery();
     const { data: productsResponse, isLoading: productsLoading } = useGetProductsQuery();
@@ -33,10 +35,10 @@ const Dashboard = () => {
     }
 
     const stats = [
-        { label: 'Total Products', value: (summaryData?.productCount || 0).toString(), icon: Package, trend: '+12.5%', color: 'text-purple-400' },
-        { label: 'Low Stock Items', value: (summaryData?.stockStatus?.low || 0).toString(), icon: AlertTriangle, trend: 'Needs attention', color: 'text-amber-400' },
-        { label: 'Purchases Volume', value: `$${(summaryData?.totalPurchases || 0).toLocaleString()}`, icon: Package, trend: 'Real-time', color: 'text-cyan-400' },
-        { label: 'Total Revenue', value: `$${(summaryData?.totalSales || 0).toLocaleString()}`, icon: TrendingUp, trend: 'Net Balance', color: 'text-emerald-400' },
+        { label: 'Total Products', value: (summaryData?.productCount || 0).toString(), icon: Package, trend: '+12.5%', color: 'text-purple-400', path: '/inventory' },
+        { label: 'Low Stock Items', value: (summaryData?.stockStatus?.low || 0).toString(), icon: AlertTriangle, trend: 'Needs attention', color: 'text-amber-400', path: '/inventory' },
+        { label: 'Purchases Volume', value: `$${(summaryData?.totalPurchases || 0).toLocaleString()}`, icon: Package, trend: 'Real-time', color: 'text-cyan-400', path: '/purchase-orders' },
+        { label: 'Total Revenue', value: `$${(summaryData?.totalSales || 0).toLocaleString()}`, icon: TrendingUp, trend: 'Net Balance', color: 'text-emerald-400', path: '/invoices' },
     ];
 
     const stockTrendData = [
@@ -78,7 +80,8 @@ const Dashboard = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.1 }}
-                        className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/60 rounded-2xl p-6 hover:border-purple-500/30 transition-all group relative overflow-hidden"
+                        onClick={() => navigate(stat.path)}
+                        className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/60 rounded-2xl p-6 hover:border-purple-500/30 transition-all group relative overflow-hidden cursor-pointer active:scale-95"
                     >
                         <div className="absolute -right-4 -top-4 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition-colors"></div>
                         <div className="flex items-center justify-between mb-4">

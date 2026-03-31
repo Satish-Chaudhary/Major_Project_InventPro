@@ -21,6 +21,7 @@ import Security from './pages/Security';
 import AddProduct from './pages/AddProduct';
 import AddCategory from './pages/AddCategory';
 import AdminRegister from './pages/AdminRegister';
+import RootRegister from './pages/RootRegister';
 import RequestAccess from './pages/RequestAccess';
 import ResetPassword from './pages/ResetPassword';
 import AddUser from './pages/AddUser';
@@ -30,10 +31,18 @@ import AddSupplier from './pages/AddSupplier';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminRoles from './pages/AdminRoles';
 import AddRole from './pages/AddRole';
+import Customers from './pages/Customers';
+import AddCustomer from './pages/AddCustomer';
+import Cart from './pages/Cart';
+import Checkout from './pages/Checkout';
+import Invoices from './pages/Invoices';
+import SalesOrders from './pages/SalesOrders';
+import SalesOrderDetails from './pages/SalesOrderDetails';
 import Unauthorized from './pages/Unauthorized';
 import MainLayout from './components/layout/MainLayout';
 
 import { ClipLoader } from 'react-spinners';
+import { ROLES } from './config/permissions';
 
 const ProtectedRoute = ({ isLoggedIn, user, allowedRoles, children }) => {
   if (!isLoggedIn) {
@@ -42,19 +51,21 @@ const ProtectedRoute = ({ isLoggedIn, user, allowedRoles, children }) => {
 
   const role = user?.role?.toLowerCase();
 
-  // Normalize roles to match PERMISSION_MATRIX keys if necessary
-  const normalizedRole = role === 'warehouse' ? 'warehouse staff' : role === 'sales' ? 'sales staff' : role;
+  // Root always has full access
+  if (role === ROLES.ROOT) {
+    return children;
+  }
 
-  if (allowedRoles && !allowedRoles.includes(normalizedRole)) {
+  if (allowedRoles && !allowedRoles.includes(role)) {
     return <Navigate to="/unauthorized" replace />;
   }
 
   return children;
 };
-import { serverUrl } from './config/api';
 
 import { useAppDispatch, useAppSelector } from './redux/hooks';
 import { fetchCurrentUser, selectIsAuthenticated, selectUser, selectAuthLoading } from './redux/slices/authSlice';
+import { useRealTimeUpdates } from './hooks/useRealTimeUpdates';
 import { selectModal } from './redux/slices/uiSlice';
 import { useEffect } from 'react';
 
@@ -64,6 +75,8 @@ const App = () => {
   const user = useAppSelector(selectUser);
   const authLoading = useAppSelector(selectAuthLoading);
   const productFormModal = useAppSelector(selectModal('productForm'));
+
+  useRealTimeUpdates();
 
   useEffect(() => {
     dispatch(fetchCurrentUser());
@@ -98,6 +111,7 @@ const App = () => {
           }
         />
         <Route path="/register-admin" element={<AdminRegister />} />
+        <Route path="/register-root" element={<RootRegister />} />
         <Route path="/request-access" element={<RequestAccess />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
@@ -111,101 +125,164 @@ const App = () => {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path='/dashboard' element={<Dashboard />} />
           <Route path='/inventory' element={<ProductsList />} />
+          <Route path='/cart' element={<Cart />} />
+          <Route path='/checkout' element={<Checkout />} />
+
           <Route path='/categories' element={
-            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin', 'manager', 'warehouse staff']}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.WAREHOUSE]}>
               <Categories />
             </ProtectedRoute>
           } />
+
           <Route path='/security' element={
-            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin', 'root']}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT]}>
               <Security />
             </ProtectedRoute>
           } />
-          <Route path='/audit' element={<AuditLogs />} />
+
+          <Route path='/audit' element={
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT]}>
+              <AuditLogs />
+            </ProtectedRoute>
+          } />
+
           <Route path='/analytics' element={
-            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin', 'manager', 'accountant']}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.SALES_STAFF]}>
               <Analytics />
             </ProtectedRoute>
           } />
+
           <Route path='/reports' element={
-            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin', 'manager', 'accountant']}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.ACCOUNTANT, ROLES.MANAGER]}>
               <Reports />
             </ProtectedRoute>
           } />
+
+          <Route path='/invoices' element={
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.ACCOUNTANT, ROLES.MANAGER, ROLES.SALES_STAFF]}>
+              <Invoices />
+            </ProtectedRoute>
+          } />
+
+          <Route path='/sales-orders' element={
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.SALES_STAFF, ROLES.ACCOUNTANT]}>
+              <SalesOrders />
+            </ProtectedRoute>
+          } />
+
           <Route path='/orders' element={
-            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin', 'manager', 'sales staff']}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.SALES_STAFF, ROLES.ACCOUNTANT]}>
               <Orders />
             </ProtectedRoute>
           } />
+
           <Route path='/suppliers' element={
-            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin', 'manager', 'accountant']}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT]}>
               <Suppliers />
             </ProtectedRoute>
           } />
+
           <Route path='/purchase-orders' element={
-            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin', 'manager', 'accountant', 'warehouse staff']}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.WAREHOUSE]}>
               <PurchaseOrders />
             </ProtectedRoute>
           } />
+
           <Route path='/create-po' element={
-            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin', 'manager', 'accountant']}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT]}>
               <AddPurchaseOrder />
             </ProtectedRoute>
           } />
+
           <Route path='/settings' element={
-            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin']}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.SALES_STAFF, ROLES.WAREHOUSE, ROLES.STAFF]}>
               <Settings />
             </ProtectedRoute>
           } />
+
           <Route path='/profile' element={<UserProfile />} />
+
           <Route path='/users' element={
-            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin']}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT]}>
               <UserManagement />
             </ProtectedRoute>
           } />
+
           <Route path='/approvals' element={
-            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin']}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT]}>
               <UserApprovals />
             </ProtectedRoute>
           } />
+
           <Route path='/add-category' element={
-            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin', 'manager']}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER]}>
               <AddCategory />
             </ProtectedRoute>
           } />
+
           <Route path='/add-user' element={
-            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin']}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT]}>
               <AddUser />
             </ProtectedRoute>
           } />
+
+          <Route path='/sales-order/:id' element={
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.SALES_STAFF, ROLES.ACCOUNTANT]}>
+              <SalesOrderDetails />
+            </ProtectedRoute>
+          } />
+
           <Route path='/add-order' element={
-            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin', 'manager', 'sales staff']}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.SALES_STAFF]}>
               <AddOrder />
             </ProtectedRoute>
           } />
+
           <Route path='/order/:id' element={
-            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin', 'manager', 'sales staff', 'warehouse staff']}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.SALES_STAFF, ROLES.WAREHOUSE, ROLES.ACCOUNTANT]}>
               <OrderDetails />
             </ProtectedRoute>
           } />
+
           <Route path='/add-supplier' element={
-            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin', 'manager']}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER]}>
               <AddSupplier />
             </ProtectedRoute>
           } />
+
           <Route path='/admin-dashboard' element={
-            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin']}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT]}>
               <AdminDashboard />
             </ProtectedRoute>
           } />
+
           <Route path='/roles' element={
-            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin']}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT]}>
               <AdminRoles />
             </ProtectedRoute>
           } />
+
           <Route path='/add-role' element={
-            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={['admin']}>
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT]}>
               <AddRole />
+            </ProtectedRoute>
+          } />
+
+          <Route path='/customers' element={
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.SALES_STAFF, ROLES.ACCOUNTANT]}>
+              <Customers />
+            </ProtectedRoute>
+          } />
+
+          <Route path='/add-customer' element={
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.SALES_STAFF]}>
+              <AddCustomer />
+            </ProtectedRoute>
+          } />
+
+          <Route path='/edit-customer/:id' element={
+            <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.SALES_STAFF]}>
+              <AddCustomer />
             </ProtectedRoute>
           } />
         </Route>

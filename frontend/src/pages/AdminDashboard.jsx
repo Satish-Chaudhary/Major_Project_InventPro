@@ -1,23 +1,19 @@
 import {
-    Activity, Globe, Cpu, ShieldAlert, Zap,
-    MonitorSmartphone, Server, Database, Clock,
-    RefreshCcw, MoreHorizontal
+    Activity, Package, AlertTriangle, TrendingUp,
+    Clock, Database, Server
 } from 'lucide-react';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { clsx } from 'clsx';
-import { Package, AlertTriangle, TrendingUp } from 'lucide-react';
 import { motion } from 'framer-motion'
 import { useGetSummaryReportQuery, useGetSalesPerformanceQuery } from '../redux/slices/reportSlice';
 import { useGetActivitiesQuery } from '../redux/slices/activitySlice';
-import { useGetSystemStatsQuery } from '../redux/slices/settingsSlice';
 import { format } from 'date-fns';
 
 const AdminDashboard = () => {
     const { data: summaryData } = useGetSummaryReportQuery();
-    const { data: activityData } = useGetActivitiesQuery({ limit: 4 });
-    const { data: statsData } = useGetSystemStatsQuery();
+    const { data: activityData } = useGetActivitiesQuery({ limit: 6 });
     const { data: salesPerformance } = useGetSalesPerformanceQuery({ period: 'today' });
 
     const stats = [
@@ -32,26 +28,20 @@ const AdminDashboard = () => {
         name: point.hour,
         value: point.revenue
     })) || [
-            { name: '08:00', value: 400 },
-            { name: '12:00', value: 800 },
-            { name: '16:00', value: 500 },
-            { name: '20:00', value: 700 }
-        ];
+        { name: '08:00', value: 400 },
+        { name: '12:00', value: 800 },
+        { name: '16:00', value: 500 },
+        { name: '20:00', value: 700 }
+    ];
 
     const activityLogs = activityData?.activities?.map(act => ({
         id: act._id,
         user: act.user,
         action: act.action,
-        time: format(new Date(act.createdAt), 'HH:mm'),
+        module: act.module,
+        time: act.createdAt && !isNaN(new Date(act.createdAt)) ? format(new Date(act.createdAt), 'HH:mm') : '--:--',
         type: act.module === 'Security' ? 'security' : 'sync'
     })) || [];
-
-    const sentinelNodes = [
-        { label: 'DB Sync Health', value: statsData?.dbHealth || 98.4, color: 'text-emerald-400', icon: Database },
-        { label: 'Network Stability', value: statsData?.networkHealth || 99.1, color: 'text-purple-400', icon: Activity },
-        { label: 'Node Reliability', value: statsData?.nodeHealth || 87.5, color: 'text-cyan-400', icon: Server },
-        { label: 'Global Latency', value: statsData?.latency || 24, color: 'text-amber-400', unit: 'ms', icon: Clock },
-    ];
 
     return (
         <motion.div
@@ -61,22 +51,14 @@ const AdminDashboard = () => {
             className="p-6 space-y-8"
         >
             {/* Header */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold text-white tracking-tight text-uppercase">System Command Center</h2>
-                    <p className="text-slate-400 text-sm mt-1 font-medium">Real-time infrastructure health and operational throughput.</p>
-                </div>
-                <div className="flex bg-slate-900/40 border border-slate-800 p-1 rounded-xl">
-                    <button className="px-4 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-                        <MonitorSmartphone className="w-3.5 h-3.5" /> Core
-                    </button>
-                    <button className="px-4 py-2 text-slate-500 hover:text-slate-300 transition-all rounded-lg text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-                        <Server className="w-3.5 h-3.5" /> Nodes
-                    </button>
+                    <h2 className="text-[24px] font-bold text-slate-500 uppercase tracking-widest">Admin Dashboard</h2>
+                    <p className="text-slate-500 text-xs mt-1 font-medium uppercase tracking-widest">System overview and operational metrics</p>
                 </div>
             </div>
 
-            {/* Stats Grid - Matching Dashboard.jsx */}
+            {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {stats.map((stat, idx) => (
                     <motion.div
@@ -99,11 +81,12 @@ const AdminDashboard = () => {
                 ))}
             </div>
 
-            {/* Charts Section */}
+            {/* Charts + Activity Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Operational Throughput Chart */}
                 <div className="lg:col-span-2 bg-slate-900/40 border border-slate-800/60 rounded-2xl p-6">
-                    <h3 className="text-white font-bold mb-6 text-lg tracking-tight">OPERATIONAL THROUGHPUT</h3>
-                    <div className="h-[350px]">
+                    <h3 className="text-white font-bold mb-6 text-sm tracking-widest uppercase">Operational Throughput</h3>
+                    <div className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={chartData}>
                                 <defs>
@@ -113,8 +96,8 @@ const AdminDashboard = () => {
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                                <XAxis dataKey="name" stroke="#64748b" axisLine={false} tickLine={false} dy={10} fontSize={12} />
-                                <YAxis stroke="#64748b" axisLine={false} tickLine={false} fontSize={12} />
+                                <XAxis dataKey="name" stroke="#64748b" axisLine={false} tickLine={false} dy={10} fontSize={11} />
+                                <YAxis stroke="#64748b" axisLine={false} tickLine={false} fontSize={11} />
                                 <Tooltip
                                     contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5)' }}
                                 />
@@ -124,78 +107,33 @@ const AdminDashboard = () => {
                     </div>
                 </div>
 
+                {/* Recent Activity Feed */}
                 <div className="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-6 flex flex-col">
-                    <h3 className="text-white font-bold mb-6 text-lg tracking-tight uppercase">System Sentinel</h3>
-                    <div className="space-y-4 flex-1">
-                        {sentinelNodes.map((node, i) => (
-                            <div key={i} className="p-4 bg-slate-800/20 rounded-xl border border-transparent hover:border-slate-700/50 transition-all">
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <node.icon className={clsx("w-4 h-4", node.color)} />
-                                        <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">{node.label}</span>
-                                    </div>
-                                    <span className={clsx("text-sm font-bold", node.color)}>{node.value}{node.unit || '%'}</span>
-                                </div>
-                                <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                    <div className={clsx("h-full rounded-full bg-current", node.color)} style={{ width: `${node.value}%` }} />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* Tables Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-6">
-                <div className="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-6">
-                    <h3 className="text-white font-bold mb-6 text-lg tracking-tight">Recent Activity</h3>
-                    <div className="space-y-4">
-                        {activityLogs.map((activity) => (
-                            <div key={activity.id} className="flex items-center gap-4 p-4 bg-slate-800/20 rounded-xl hover:bg-slate-800/40 transition-colors border border-transparent hover:border-slate-700/50 group">
+                    <h3 className="text-white font-bold mb-6 text-sm tracking-widest uppercase">Recent Activity</h3>
+                    <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar">
+                        {activityLogs.length > 0 ? activityLogs.map((activity) => (
+                            <div key={activity.id} className="flex items-center gap-3 p-3 bg-slate-800/20 rounded-xl hover:bg-slate-800/40 transition-colors border border-transparent hover:border-slate-700/50 group">
                                 <div className={clsx(
-                                    'w-2 h-10 rounded-full transition-all group-hover:h-12',
-                                    activity.type === 'grant' && 'bg-emerald-500',
+                                    'w-1.5 h-8 rounded-full shrink-0',
                                     activity.type === 'security' && 'bg-amber-500',
+                                    activity.type === 'sync' && 'bg-cyan-500',
                                     activity.type === 'auth' && 'bg-purple-500',
-                                    activity.type === 'sync' && 'bg-cyan-500'
+                                    !['security', 'sync', 'auth'].includes(activity.type) && 'bg-emerald-500'
                                 )} />
-                                <div className="flex-1">
-                                    <p className="text-white text-sm font-semibold">{activity.user}</p>
-                                    <p className="text-slate-400 text-xs mt-0.5">{activity.action}</p>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-white text-xs font-semibold truncate">{activity.user}</p>
+                                    <p className="text-slate-400 text-[10px] mt-0.5 truncate">{activity.action}</p>
                                 </div>
-                                <div className="text-right">
+                                <div className="text-right shrink-0">
                                     <p className="text-slate-500 text-[10px] uppercase font-bold tracking-widest">{activity.time}</p>
+                                    <p className="text-slate-600 text-[9px] font-bold uppercase mt-0.5">{activity.module}</p>
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-6">
-                    <h3 className="text-white font-bold mb-6 text-lg tracking-tight">System Infrastructure</h3>
-                    <div className="space-y-4">
-                        {[
-                            { name: 'Primary Database', status: 'Stable', details: '99.9% Uptime', icon: Server, color: 'text-emerald-400' },
-                            { name: 'Auth Microservice', status: 'Active', details: 'Load: 12%', icon: Clock, color: 'text-purple-400' },
-                            { name: 'Cache Layer', status: 'Optimal', details: 'Hit Rate: 94%', icon: Activity, color: 'text-cyan-400' },
-                        ].map((item, i) => (
-                            <div key={i} className="flex items-center justify-between p-4 bg-slate-800/20 rounded-xl border border-transparent hover:border-purple-500/20 transition-all">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-linear-to-br from-slate-700 to-slate-800 rounded-xl flex items-center justify-center shadow-lg shadow-black/20">
-                                        <item.icon className="w-6 h-6 text-slate-400" />
-                                    </div>
-                                    <div>
-                                        <p className="text-white text-sm font-bold">{item.name}</p>
-                                        <p className="text-slate-400 text-xs font-medium">{item.details}</p>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <span className={clsx("text-xs font-bold px-2 py-1 rounded-lg bg-slate-800", item.color)}>
-                                        {item.status}
-                                    </span>
-                                </div>
+                        )) : (
+                            <div className="flex items-center justify-center h-full">
+                                <p className="text-slate-600 text-[10px] font-bold uppercase tracking-widest">No activity yet</p>
                             </div>
-                        ))}
+                        )}
                     </div>
                 </div>
             </div>

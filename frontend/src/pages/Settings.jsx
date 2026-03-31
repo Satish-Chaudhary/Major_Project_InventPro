@@ -1,21 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
     Settings as SettingsIcon, Building2, ShieldCheck,
     BellRing, UserCog, Mail, Globe, Lock,
-    Key, Database, Check, Save
+    Key, Database, Check, Save, ArrowUpDown, Users
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
 import { useGetSettingsQuery, useUpdateSettingsMutation, useGetSystemStatsQuery } from '../redux/slices/settingsSlice';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+import { useAppSelector } from '../redux/hooks';
+import { selectUser } from '../redux/slices/authSlice';
+import { ROLES } from '../config/permissions';
 
 const Settings = () => {
+    const navigate = useNavigate();
+    const user = useAppSelector(selectUser);
     const { data: settingsData, isLoading } = useGetSettingsQuery();
     const { data: statsData } = useGetSystemStatsQuery();
     const [updateSettings] = useUpdateSettingsMutation();
-    
-    const [activeSettingsTab, setActiveSettingsTab] = useState('general');
+
+    const [activeSettingsTab, setActiveSettingsTab] = useState('administration');
     const [formData, setFormData] = useState({
         companyName: '',
         supportEmail: '',
@@ -46,11 +52,33 @@ const Settings = () => {
     };
 
     const tabs = [
-        { id: 'general', label: 'General', icon: Building2 },
+        { id: 'general', label: 'General', icon: Building2, roles: [ROLES.ADMIN, ROLES.ROOT] },
+        { id: 'administration', label: 'Administration', icon: ShieldCheck },
         { id: 'inventory', label: 'Inventory', icon: Database },
-        { id: 'security', label: 'Security', icon: ShieldCheck },
         { id: 'notifications', label: 'Notifications', icon: BellRing },
-    ];
+    ].filter(tab => {
+        if (!tab.roles) return true;
+        const userRole = user?.role?.toLowerCase();
+        return userRole === ROLES.ROOT || tab.roles.includes(userRole);
+    });
+
+    const administrationModules = [
+        { id: 'admin-dashboard', icon: ShieldCheck, label: 'Admin Panel', path: '/admin-dashboard', roles: [ROLES.ADMIN, ROLES.ROOT] },
+        { id: 'categories', icon: Database, label: 'Item Categories', path: '/categories', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER] },
+        { id: 'orders', icon: ArrowUpDown, label: 'Stock Movements', path: '/orders', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.SALES_STAFF, ROLES.ACCOUNTANT] },
+        { id: 'suppliers', icon: Users, label: 'Vendor Registry', path: '/suppliers', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT] },
+        { id: 'purchase-orders', icon: Database, label: 'Purchase Orders', path: '/purchase-orders', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.WAREHOUSE] },
+        { id: 'approvals', icon: ShieldCheck, label: 'Staff Requests', path: '/approvals', roles: [ROLES.ADMIN, ROLES.ROOT] },
+        { id: 'users', icon: UserCog, label: 'User Database', path: '/users', roles: [ROLES.ADMIN, ROLES.ROOT] },
+        { id: 'roles', icon: ShieldCheck, label: 'Roles & Security', path: '/roles', roles: [ROLES.ADMIN, ROLES.ROOT] },
+        { id: 'audit', icon: Database, label: 'Audit Logs', path: '/audit', roles: [ROLES.ADMIN, ROLES.ROOT] },
+        { id: 'analytics', icon: Database, label: 'System Analytics', path: '/analytics', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT] },
+        { id: 'reports', icon: Database, label: 'Advanced Reports', path: '/reports', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.ACCOUNTANT] },
+    ].filter(mod => {
+        if (!mod.roles) return true;
+        const userRole = user?.role?.toLowerCase();
+        return userRole === ROLES.ROOT || mod.roles.includes(userRole);
+    });
 
     return (
         <motion.div
@@ -60,16 +88,18 @@ const Settings = () => {
         >
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold text-white tracking-tight">System Settings</h2>
+                    <h2 className="text-2xl font-bold text-white tracking-tight">Setting</h2>
                     <p className="text-slate-400 text-sm mt-1">Configure your organization and system wide defaults.</p>
                 </div>
-                <button 
-                    onClick={handleSave}
-                    className="flex items-center gap-2 bg-linear-to-r from-purple-600 to-cyan-600 text-white px-6 py-2.5 rounded-xl hover:brightness-110 transition-all font-bold text-sm shadow-xl shadow-purple-500/20 active:scale-95"
-                >
-                    <Save className="w-4 h-4" />
-                    Save Changes
-                </button>
+                {(user?.role?.toLowerCase() === ROLES.ADMIN || user?.role?.toLowerCase() === ROLES.ROOT) && (
+                    <button
+                        onClick={handleSave}
+                        className="flex items-center gap-2 bg-linear-to-r from-purple-600 to-cyan-600 text-white px-6 py-2.5 rounded-xl hover:brightness-110 transition-all font-bold text-sm shadow-xl shadow-purple-500/20 active:scale-95"
+                    >
+                        <Save className="w-4 h-4" />
+                        Save Changes
+                    </button>
+                )}
             </div>
 
             <div className="flex gap-1.5 p-1.5 bg-slate-900 border border-slate-800 rounded-2xl w-fit">
@@ -112,32 +142,32 @@ const Settings = () => {
                                 <div className="grid grid-cols-2 gap-6 pt-4">
                                     <div className="space-y-2">
                                         <label className="text-slate-500 text-[10px] font-bold uppercase tracking-widest ml-1">Company Name</label>
-                                        <input 
-                                            type="text" 
-                                            value={formData.companyName} 
+                                        <input
+                                            type="text"
+                                            value={formData.companyName}
                                             onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                                            placeholder="Nexus Inventory Systems" 
-                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-purple-500/50 transition-all focus:ring-4 focus:ring-purple-500/5 focus:outline-none" 
+                                            placeholder="Nexus Inventory Systems"
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-purple-500/50 transition-all focus:ring-4 focus:ring-purple-500/5 focus:outline-none"
                                         />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-slate-500 text-[10px] font-bold uppercase tracking-widest ml-1">Support Email</label>
-                                        <input 
-                                            type="email" 
-                                            value={formData.supportEmail} 
+                                        <input
+                                            type="email"
+                                            value={formData.supportEmail}
                                             onChange={(e) => setFormData({ ...formData, supportEmail: e.target.value })}
-                                            placeholder="support@nexus.com" 
-                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-purple-500/50 transition-all focus:ring-4 focus:ring-purple-500/5 focus:outline-none" 
+                                            placeholder="support@nexus.com"
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-purple-500/50 transition-all focus:ring-4 focus:ring-purple-500/5 focus:outline-none"
                                         />
                                     </div>
                                     <div className="col-span-2 space-y-2">
                                         <label className="text-slate-500 text-[10px] font-bold uppercase tracking-widest ml-1">Company Address</label>
-                                        <input 
-                                            type="text" 
-                                            value={formData.companyAddress} 
+                                        <input
+                                            type="text"
+                                            value={formData.companyAddress}
                                             onChange={(e) => setFormData({ ...formData, companyAddress: e.target.value })}
-                                            placeholder="123 Business Parkway, Tech City" 
-                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-purple-500/50" 
+                                            placeholder="123 Business Parkway, Tech City"
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-purple-500/50"
                                         />
                                     </div>
                                 </div>
@@ -157,7 +187,7 @@ const Settings = () => {
                                 <div className="grid grid-cols-2 gap-6 pt-4">
                                     <div className="space-y-2">
                                         <label className="text-slate-500 text-[10px] font-bold uppercase tracking-widest ml-1">System Language</label>
-                                        <select 
+                                        <select
                                             value={formData.language}
                                             onChange={(e) => setFormData({ ...formData, language: e.target.value })}
                                             className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500/50 cursor-pointer"
@@ -169,7 +199,7 @@ const Settings = () => {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-slate-500 text-[10px] font-bold uppercase tracking-widest ml-1">Default Currency</label>
-                                        <select 
+                                        <select
                                             value={formData.currency}
                                             onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
                                             className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500/50 cursor-pointer"
@@ -184,7 +214,31 @@ const Settings = () => {
                         </motion.div>
                     )}
 
-                    {activeSettingsTab !== 'general' && (
+                    {activeSettingsTab === 'administration' && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                        >
+                            {administrationModules.map((mod) => (
+                                <button
+                                    key={mod.id}
+                                    onClick={() => navigate(mod.path)}
+                                    className="flex items-center gap-4 bg-slate-900/40 border border-slate-800 p-6 rounded-3xl hover:border-purple-500/50 hover:bg-slate-800/50 transition-all group group-hover:scale-[1.02] active:scale-[0.98]"
+                                >
+                                    <div className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-700 group-hover:bg-purple-500/20 group-hover:border-purple-500/40 transition-colors">
+                                        <mod.icon className="w-6 h-6 text-slate-400 group-hover:text-purple-400" />
+                                    </div>
+                                    <div className="text-left">
+                                        <h4 className="text-white font-bold text-sm tracking-tight">{mod.label}</h4>
+                                        <p className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mt-1">Manage Dashboard</p>
+                                    </div>
+                                </button>
+                            ))}
+                        </motion.div>
+                    )}
+
+                    {(activeSettingsTab === 'inventory' || activeSettingsTab === 'notifications') && (
                         <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-20 text-center flex flex-col items-center justify-center">
                             <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mb-4 border border-slate-700">
                                 <SettingsIcon className="w-8 h-8 text-slate-500 animate-[spin_5s_linear_infinite]" />
@@ -236,8 +290,8 @@ const Settings = () => {
                                 </span>
                             </div>
                             <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                <div 
-                                    className="h-full bg-linear-to-r from-purple-500 to-cyan-500 shadow-[0_0_10px_rgba(168,85,247,0.3)] transition-all duration-1000" 
+                                <div
+                                    className="h-full bg-linear-to-r from-purple-500 to-cyan-500 shadow-[0_0_10px_rgba(168,85,247,0.3)] transition-all duration-1000"
                                     style={{ width: `${(parseFloat(statsData?.dbUsage) / parseFloat(statsData?.dbLimit)) * 100 || 0}%` }}
                                 />
                             </div>

@@ -14,11 +14,16 @@ import { activityApi } from './slices/activitySlice'
 import { adminApi } from './slices/adminSlice'
 import { notificationApi } from './slices/notificationSlice'
 import { settingsApi } from './slices/settingsSlice'
+import { customerApi } from './slices/customerSlice'
+import { salesOrderApi } from './slices/salesOrderSlice'
+import { invoiceApi } from './slices/invoiceSlice'
+import { paymentApi } from './slices/paymentSlice'
+import cartReducer from './slices/cartSlice'
 
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['auth', 'ui'], // Only persist auth and UI
+  whitelist: ['auth', 'ui', 'cart'], // Only persist auth, UI, and cart
 }
 
 const rootReducer = combineReducers({
@@ -37,6 +42,11 @@ const rootReducer = combineReducers({
   [adminApi.reducerPath]: adminApi.reducer,
   [notificationApi.reducerPath]: notificationApi.reducer,
   [settingsApi.reducerPath]: settingsApi.reducer,
+  [customerApi.reducerPath]: customerApi.reducer,
+  [salesOrderApi.reducerPath]: salesOrderApi.reducer,
+  [invoiceApi.reducerPath]: invoiceApi.reducer,
+  [paymentApi.reducerPath]: paymentApi.reducer,
+  cart: cartReducer,
 })
 
 const persistedReducer = persistReducer(persistConfig, rootReducer)
@@ -57,7 +67,11 @@ export const store = configureStore({
       activityApi.middleware,
       adminApi.middleware,
       notificationApi.middleware,
-      settingsApi.middleware
+      settingsApi.middleware,
+      customerApi.middleware,
+      salesOrderApi.middleware,
+      invoiceApi.middleware,
+      paymentApi.middleware
     ),
 })
 

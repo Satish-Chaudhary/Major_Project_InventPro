@@ -191,3 +191,70 @@ export const sendRejectionEmail = async (userEmail, userName, reason = null) => 
         return false;
     }
 };
+
+export const sendInvoiceEmail = async (userEmail, userName, invoice) => {
+    // Note: In a real app, you would attach the PDF here as well.
+    const mailOptions = {
+        from: `InventPro Billing <${process.env.EMAIL}>`,
+        to: userEmail,
+        subject: `Invoice ${invoice.invoiceNumber} from InventPro`,
+        html: `
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px; background-color: #ffffff;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <h1 style="color: #4f46e5; margin: 0;">InventPro</h1>
+                    <p style="color: #6b7280; font-size: 14px;">Inventory Management System</p>
+                </div>
+                
+                <h2 style="color: #111827; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">New Invoice Generated</h2>
+                <p>Hello <strong>${userName}</strong>,</p>
+                <p>An invoice has been generated for your recent transaction.</p>
+                
+                <div style="background-color: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin: 20px 0;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 10px 0; color: #64748b; font-size: 14px; font-weight: bold;">Invoice Number</td>
+                            <td style="padding: 10px 0; color: #1e293b; font-size: 14px; text-align: right;">${invoice.invoiceNumber}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px 0; color: #64748b; font-size: 14px; font-weight: bold;">Amount Due</td>
+                            <td style="padding: 10px 0; color: #4f46e5; font-size: 18px; font-weight: 800; text-align: right;">$${invoice.total.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px 0; color: #64748b; font-size: 14px; font-weight: bold;">Due Date</td>
+                            <td style="padding: 10px 0; color: #1e293b; font-size: 14px; text-align: right;">${new Date(invoice.dueDate).toLocaleDateString()}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px 0; color: #64748b; font-size: 14px; font-weight: bold;">Status</td>
+                            <td style="padding: 10px 0; text-align: right;">
+                                <span style="background-color: ${invoice.status === 'paid' ? '#d1fae5' : '#fee2e2'}; color: ${invoice.status === 'paid' ? '#065f46' : '#991b1b'}; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: bold; text-transform: uppercase;">${invoice.status}</span>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <p style="color: #64748b; font-size: 14px; line-height: 1.6;">
+                    You can view and manage your billing history in the InventPro portal.
+                </p>
+                
+                <div style="margin-top: 30px; text-align: center;">
+                    <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/login" style="display: inline-block; background-color: #4f46e5; color: #ffffff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                        Access Billing Portal
+                    </a>
+                </div>
+                
+                <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #9ca3af; text-align: center;">
+                    <p>Designed and Managed by InventPro Billing Intelligence.</p>
+                </div>
+            </div>
+        `
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log(`Invoice email sent to: ${userEmail}`);
+        return true;
+    } catch (error) {
+        console.error('Error sending invoice email:', error);
+        return false;
+    }
+};

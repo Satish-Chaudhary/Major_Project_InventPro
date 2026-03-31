@@ -55,12 +55,12 @@ const Suppliers = () => {
         <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="p-8 space-y-8 max-w-7xl mx-auto"
+            className="p-6 space-y-6 max-w-7xl mx-auto"
         >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h2 className="text-4xl font-black text-white tracking-tight">Suppliers</h2>
-                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Manage your global vendor network</p>
+                    <h2 className="text-2xl font-bold text-white tracking-tight">Suppliers</h2>
+                    <p className="text-slate-400 text-xs font-medium mt-1">Manage your global vendor network</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
                     <button 

@@ -127,7 +127,13 @@ export const adminApi = createApi({
       query: () => ({
         url: '../auth/pending-requests',
       }),
-      providesTags: ['User'],
+      providesTags: (result) =>
+        result?.requests
+          ? [
+            ...result.requests.map(({ _id }) => ({ type: 'User', id: _id })),
+            { type: 'User', id: 'LIST' },
+          ]
+          : [{ type: 'User', id: 'LIST' }],
     }),
     approveUser: builder.mutation({
       query: (id) => ({

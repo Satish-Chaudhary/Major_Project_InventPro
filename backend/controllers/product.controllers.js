@@ -1,5 +1,7 @@
 import Product from "../models/product.model.js";
 import { logActivity } from "../utils/logger.utils.js";
+import { io } from "../socket/socket.js";
+import { sendNotification } from "../utils/notification.utils.js";
 
 // @desc    Add a new product
 // @route   POST /api/product/add
@@ -55,6 +57,9 @@ export const addProduct = async (req, res) => {
         // Log activity
         await logActivity(req.user._id, `Added new product: ${productName}`, 'inventory', { productId: newProduct._id }, req.ip);
 
+        // Emit real-time update
+        io.emit("stock:updated", newProduct);
+
         res.status(201).json({
             success: true,
             message: "Product added successfully",
@@ -71,8 +76,11 @@ export const addProduct = async (req, res) => {
 // @access  Private
 export const getAllProducts = async (req, res) => {
     try {
-        const { page = 1, limit = 10, search = '', category = '', sort = 'createdAt', order = 'desc' } = req.query;
-        
+        const { page = 1, limit = 10, search = '', category = '', status = '', sort = 'createdAt', order = 'desc' } = req.query;
+
+        // Cap limit to prevent unbounded queries (V13 performance)
+        const safeLimit = Math.min(Number(limit), 100);
+
         const filter = {};
         if (search) {
             filter.$or = [
@@ -84,26 +92,30 @@ export const getAllProducts = async (req, res) => {
         if (category && category !== 'All') {
             filter.category = category;
         }
+        if (status && status !== 'All') {
+            filter.status = { $regex: status, $options: 'i' };
+        }
 
-        const skip = (page - 1) * limit;
+        const skip = (page - 1) * safeLimit;
         const total = await Product.countDocuments(filter);
         const products = await Product.find(filter)
             .sort({ [sort]: order === 'desc' ? -1 : 1 })
             .skip(skip)
-            .limit(Number(limit));
+            .limit(safeLimit);
 
         res.status(200).json({
             success: true,
             products,
             total,
             page: Number(page),
-            pages: Math.ceil(total / limit)
+            pages: Math.ceil(total / safeLimit)
         });
     } catch (error) {
         console.error("Error fetching products:", error);
         res.status(500).json({ success: false, message: "Server Error", error: error.message });
     }
 };
+
 
 // @desc    Get low stock products
 // @route   GET /api/product/low-stock
@@ -151,6 +163,9 @@ export const updateProduct = async (req, res) => {
         // Log activity
         await logActivity(req.user._id, `Updated product: ${product.productName}`, 'inventory', { productId: product._id }, req.ip);
 
+        // Emit real-time update
+        io.emit("stock:updated", product);
+
         res.status(200).json({
             success: true,
             message: "Product updated successfully",
@@ -177,6 +192,9 @@ export const deleteProduct = async (req, res) => {
         // Log activity
         await logActivity(req.user._id, `Deleted product: ${product.productName}`, 'inventory', { productId: product._id }, req.ip);
 
+        // Emit real-time update
+        io.emit("stock:updated", { _id: id, deleted: true });
+
         res.status(200).json({
             success: true,
             message: "Product deleted successfully"
@@ -200,7 +218,16 @@ export const adjustStock = async (req, res) => {
         }
 
         const oldQty = product.initialQty;
-        product.initialQty += Number(adjustment);
+        const newQty = product.initialQty + Number(adjustment);
+
+        if (newQty < 0) {
+            return res.status(400).json({
+                success: false,
+                message: `Insufficient stock. Current quantity is ${oldQty}. Cannot reduce by ${Math.abs(adjustment)}.`
+            });
+        }
+
+        product.initialQty = newQty;
 
         // Update status based on new quantity
         if (product.initialQty <= 0) {
@@ -227,6 +254,22 @@ export const adjustStock = async (req, res) => {
             }, 
             req.ip
         );
+
+        // Emit real-time update
+        io.emit("stock:updated", product);
+
+        // Check for low stock alert
+        if (product.initialQty <= product.lowStockThreshold) {
+            const lowStockNotify = {
+                title: 'Low Stock Alert',
+                message: `${product.productName} is running low on stock (${product.initialQty} remaining).`,
+                type: 'stock',
+                metadata: { productId: product._id }
+            };
+            await sendNotification({ ...lowStockNotify, role: 'admin' });
+            await sendNotification({ ...lowStockNotify, role: 'manager' });
+            await sendNotification({ ...lowStockNotify, role: 'warehouse staff' });
+        }
 
         res.status(200).json({
             success: true,

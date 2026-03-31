@@ -5,8 +5,71 @@ import AccessRequest from '../models/accessRequest.model.js';
 import bcrypt from 'bcryptjs';
 import { sendAccessRequestEmail, sendApprovalEmail, sendRejectionEmail } from '../utils/email.utils.js';
 import { logActivity } from '../utils/logger.utils.js';
+import { io } from "../socket/socket.js";
 import ActivityLog from '../models/activityLog.model.js';
 import mongoose from 'mongoose';
+import Role from '../models/role.model.js';
+
+// Root User Registration (Only ONE root allowed)
+export const registerRoot = async (req, res) => {
+    try {
+        const existingRoot = await User.findOne({ role: 'root' });
+        if (existingRoot) {
+            return res.status(403).json({
+                success: false,
+                message: "Root user already exists. Only one root user is allowed."
+            });
+        }
+
+        const secretKey = req.headers['x-root-key'];
+        if (secretKey !== process.env.ROOT_SECRET_KEY) {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid secret key"
+            });
+        }
+
+        const { fullName, email, phone, password, confirmPassword } = req.body;
+
+        if (password !== confirmPassword) {
+            return res.status(400).json({ success: false, message: "Passwords do not match" });
+        }
+        if (password.length < 8) {
+            return res.status(400).json({ success: false, message: "Password must be at least 8 characters" });
+        }
+
+        const existingUser = await User.findOne({ 
+            $or: [{ email }, { phone }] 
+        });
+        if (existingUser) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Email or Phone already exists" 
+            });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedConfirmPassword = await bcrypt.hash(confirmPassword, 10);
+
+        const rootUser = await User.create({
+            fullName,
+            email,
+            phone,
+            password: hashedPassword,
+            confirmPassword: hashedConfirmPassword,
+            role: 'root',
+            status: 'active'
+        });
+
+        return res.status(201).json({
+            success: true,
+            message: "Root user created successfully"
+        });
+
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
 
 // Admin Registration Controller (Max 2 Admins)
 export const adminRegister = async (req, res) => {
@@ -141,10 +204,10 @@ export const requestAccess = async (req, res) => {
 
 import Session from '../models/session.model.js';
 
-// Admin Registration Controller (Max 2 Admins)
+// Login Controller
 export const logIn = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, loginType } = req.body;
         const user = await User.findOne({ email });
 
         if (!user) {
@@ -164,6 +227,26 @@ export const logIn = async (req, res) => {
                 message: "Invalid Password"
             })
         }
+
+        // ── Portal-role enforcement ──────────────────────────────────────────
+        // Admin Portal ('admin' loginType) → only root and admin are allowed
+        // Staff Portal ('staff' loginType) → only staff role is allowed
+        const adminRoles = ['root', 'admin'];
+        if (loginType === 'admin' && !adminRoles.includes(user.role)) {
+            await logActivity(user._id, `Unauthorized portal access attempt (staff tried Admin Portal)`, 'auth', { email, role: user.role }, req.ip);
+            return res.status(403).json({
+                success: false,
+                message: "Access Denied. Staff accounts must use the Staff Portal."
+            });
+        }
+        if (loginType === 'staff' && adminRoles.includes(user.role)) {
+            await logActivity(user._id, `Unauthorized portal access attempt (admin tried Staff Portal)`, 'auth', { email, role: user.role }, req.ip);
+            return res.status(403).json({
+                success: false,
+                message: "Access Denied. Admin accounts must use the Admin Portal."
+            });
+        }
+        // ────────────────────────────────────────────────────────────────────
 
         if (user.status === 'pending') {
             return res.status(403).json({
@@ -211,6 +294,10 @@ export const logIn = async (req, res) => {
         // Log activity
         await logActivity(user._id, `User logged in`, 'auth', { sessionId: session._id }, req.ip);
 
+        // Fetch permissions for the role
+        const roleData = await Role.findOne({ name: { $regex: new RegExp(`^${user.role}$`, 'i') } });
+        const permissions = roleData ? roleData.permissions : [];
+
         return res.status(200).json({
             success: true,
             message: "User Login Successfully",
@@ -219,7 +306,9 @@ export const logIn = async (req, res) => {
                 id: user._id,
                 fullName: user.fullName,
                 email: user.email,
-                role: user.role
+                role: user.role,
+                status: user.status,
+                permissions: permissions
             }
         })
 
@@ -239,9 +328,14 @@ export const getMe = async (req, res) => {
         if (req.user) {
              await Session.findOneAndUpdate({ userId: req.user._id, status: 'active' }, { lastActivity: new Date() }, { sort: { createdAt: -1 } });
         }
+
+        const roleData = await Role.findOne({ name: { $regex: new RegExp(`^${req.user.role}$`, 'i') } });
+        const userObj = req.user.toObject();
+        userObj.permissions = roleData ? roleData.permissions : [];
+
         return res.status(200).json({
             success: true,
-            user: req.user
+            user: userObj
         });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
@@ -434,7 +528,9 @@ export const getPendingRequests = async (req, res) => {
 export const approveRequest = async (req, res) => {
     try {
         const { id } = req.params;
-        const { assignedRole, adminNotes } = req.body;
+        const { assignedRole, adminNotes } = req.body || {};
+
+        console.log(`Approving request for ID: ${id}, role: ${assignedRole}`);
 
         const user = await User.findById(id);
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
@@ -459,11 +555,20 @@ export const approveRequest = async (req, res) => {
         // Log activity - Admin approving the request
         await logActivity(req.user._id, `Approved access request for: ${user.fullName}`, 'auth', { targetUserId: user._id, role: user.role }, req.ip);
 
+        // Emit real-time update
+        io.emit("request:update", { id: user._id, status: 'active', email: user.email });
+        io.to("role:admin").to("role:root").emit("notification:new", {
+            type: 'auth',
+            title: 'User Approved',
+            message: `${user.fullName} has been approved as ${user.role}.`
+        });
+
         return res.status(200).json({
             success: true,
             message: `User ${user.fullName} approved successfully as ${user.role}.`
         });
     } catch (error) {
+        console.error("Approve Request Error:", error.message);
         return res.status(500).json({ success: false, message: error.message });
     }
 };
@@ -472,7 +577,10 @@ export const approveRequest = async (req, res) => {
 export const rejectRequest = async (req, res) => {
     try {
         const { id } = req.params;
-        const { reason } = req.body;
+        const { reason } = req.body || {};
+
+        console.log(`Rejecting request for ID: ${id}, reason: ${reason}`);
+
         const user = await User.findByIdAndUpdate(id, { status: 'rejected' }, { new: true });
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
@@ -484,6 +592,14 @@ export const rejectRequest = async (req, res) => {
 
         // Log activity - Admin rejecting the request
         await logActivity(req.user._id, `Rejected access request for: ${user.fullName}`, 'auth', { targetUserId: user._id, reason }, req.ip);
+
+        // Emit real-time update
+        io.emit("request:update", { id: user._id, status: 'rejected', email: user.email });
+        io.to("role:admin").to("role:root").emit("notification:new", {
+            type: 'auth',
+            title: 'User Rejected',
+            message: `${user.fullName}'s access request was rejected.`
+        });
 
         return res.status(200).json({
             success: true,

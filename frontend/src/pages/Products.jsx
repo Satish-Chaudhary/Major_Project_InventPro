@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Download, Edit2, Trash2, Package, Check, RotateCcw, Settings } from 'lucide-react';
+import { Search, Plus, Download, Edit2, Trash2, Package, Check, RotateCcw, Settings, ShoppingCart } from 'lucide-react';
 import { clsx } from 'clsx';
 import { toast } from 'react-hot-toast'
 import { serverUrl } from '../config/api';
@@ -9,6 +9,7 @@ import { useDeleteWithConfirm } from '../hooks/useDeleteWithConfirm';
 import { exportToCSV } from '../utils/exportUtils';
 
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
+import { addToCart } from '../redux/slices/cartSlice';
 import {
     selectProductFilters,
     setFilters,
@@ -112,6 +113,18 @@ const ProductsList = () => {
             modalName: 'productForm',
             mode: 'create'
         }));
+    };
+
+    const handleAddToCart = (product) => {
+        dispatch(addToCart({
+            productId: product._id,
+            productName: product.productName,
+            sku: product.skuId,
+            price: product.basePrice,
+            image: product.productImage,
+            quantity: 1
+        }));
+        toast.success(`${product.productName} added to checkout cart`);
     };
 
     return (
@@ -296,6 +309,19 @@ const ProductsList = () => {
                                     <td className="px-6 py-5">{getStatusBadge(item.status)}</td>
                                     <td className="px-6 py-5 text-right">
                                         <div className="flex items-center justify-end gap-1.5">
+                                            <button
+                                                onClick={() => handleAddToCart(item)}
+                                                disabled={item.initialQty <= 0}
+                                                className={clsx(
+                                                    "p-2 rounded-lg transition-all",
+                                                    item.initialQty <= 0 
+                                                        ? "text-slate-700 cursor-not-allowed" 
+                                                        : "text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10"
+                                                )}
+                                                title={item.initialQty <= 0 ? "Out of Stock" : "Add to Checkout"}
+                                            >
+                                                <ShoppingCart className="w-4 h-4" />
+                                            </button>
                                             <button
                                                 onClick={() => {
                                                     setAdjustProduct(item);

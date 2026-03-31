@@ -1,6 +1,10 @@
 import express from 'express'
 import dotenv from 'dotenv'
 import cookieParser from 'cookie-parser';
+import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
 import authRoutes from './routes/auth.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import productRoutes from './routes/product.routes.js';
@@ -10,21 +14,26 @@ import supplierRoutes from './routes/supplier.routes.js';
 import settingRoutes from './routes/setting.routes.js';
 import reportRoutes from './routes/report.routes.js';
 import poRoutes from './routes/purchaseOrder.routes.js'
+import notificationRoutes from './routes/notification.routes.js'
+import customerRoutes from './routes/customer.routes.js'
+import salesOrderRoutes from './routes/salesOrder.routes.js'
+import invoiceRoutes from './routes/invoice.routes.js'
+import paymentRoutes from './routes/payment.routes.js'
 import connectDB from './config/db.js';
-import cors from 'cors';
-import path from 'path';
-import { fileURLToPath } from 'url';
+
+import { app, server } from './socket/socket.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 dotenv.config()
-const app = express()
 
 const port = process.env.PORT || 5000;
+
 app.use(cors({
     origin: "http://localhost:5173",
-    credentials: true
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
 }))
 
 app.use(express.json());
@@ -42,11 +51,15 @@ app.use("/api/suppliers", supplierRoutes);
 app.use("/api/settings", settingRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/purchase-orders", poRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/customers", customerRoutes);
+app.use("/api/sales-orders", salesOrderRoutes);
+app.use("/api/invoices", invoiceRoutes);
+app.use("/api/payments", paymentRoutes);
 
-app.listen(port, () => {
+server.listen(port, () => {
     connectDB();
-    console.log(`Server is Listening on port ${port
-        }`);
+    console.log(`Server is Listening on port ${port}`);
 })
 
 export default app;

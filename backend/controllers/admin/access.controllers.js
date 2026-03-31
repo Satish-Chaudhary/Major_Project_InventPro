@@ -39,7 +39,7 @@ export const approveRequest = async (req, res) => {
             // Create New User if doesn't exist (fallback)
             tempPassword = Math.random().toString(36).slice(-8);
             const hashedPassword = await bcrypt.hash(tempPassword, 10);
-            
+
             user = await User.create({
                 fullName: request.fullName,
                 email: request.email,

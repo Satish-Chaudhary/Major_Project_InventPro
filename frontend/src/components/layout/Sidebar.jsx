@@ -1,7 +1,7 @@
 import React from 'react';
 import {
     LayoutDashboard, Package, TrendingUp, Users,
-    Settings, BarChart3, ArrowUpDown, LogOut, ShieldCheck, History, Truck
+    Settings, BarChart3, ArrowUpDown, LogOut, ShieldCheck, History, Truck, ShoppingCart
 } from 'lucide-react';
 import SideNavHeader from './SideNavHeader.jsx';
 import SideNavLinks from './SideNavLinks.jsx';
@@ -20,27 +20,23 @@ const Sidebar = () => {
 
     const menuItems = [
         { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-        { id: 'admin-dashboard', icon: ShieldCheck, label: 'Admin Panel', roles: [ROLES.ADMIN, ROLES.ROOT] },
-        { id: 'inventory', icon: Package, label: 'Inventory' },
-        { id: 'approvals', icon: ShieldCheck, label: 'Staff Requests', roles: [ROLES.ADMIN, ROLES.ROOT] },
-        { id: 'users', icon: Users, label: 'User Database', roles: [ROLES.ADMIN, ROLES.ROOT] },
-        { id: 'roles', icon: ShieldCheck, label: 'Roles & Security', roles: [ROLES.ADMIN, ROLES.ROOT] },
-        { id: 'categories', icon: Package, label: 'Item Categories', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.WAREHOUSE] },
-        { id: 'audit', icon: History, label: 'Audit Logs' },
-        { id: 'security', icon: ShieldCheck, label: 'Security Audit', roles: [ROLES.ADMIN, ROLES.ROOT] },
-        { id: 'orders', icon: ArrowUpDown, label: 'Sales & Orders', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.SALES, ROLES.SALES_STAFF] },
-        { id: 'suppliers', icon: Users, label: 'Vendor Registry', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT] },
-        { id: 'purchase-orders', icon: Truck, label: 'Purchase Orders', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.WAREHOUSE] },
-        { id: 'analytics', icon: BarChart3, label: 'System Analytics', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT] },
-        { id: 'reports', icon: BarChart3, label: 'Advanced Reports', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT] },
-        { id: 'settings', icon: Settings, label: 'System Settings', roles: [ROLES.ADMIN, ROLES.ROOT] },
+        { id: 'inventory', icon: Package, label: 'Inventory Management' },
+        { id: 'cart', icon: ShoppingCart, label: 'Shopping Cart (POS)' },
+        { id: 'sales-orders', icon: TrendingUp, label: 'Client Sales', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.SALES_STAFF, ROLES.ACCOUNTANT] },
+        { id: 'invoices', icon: History, label: 'Billing & Invoices', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.ACCOUNTANT, ROLES.MANAGER, ROLES.SALES_STAFF] },
+        { id: 'customers', icon: Users, label: 'Customer CRM', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.SALES_STAFF, ROLES.ACCOUNTANT] },
+        { id: 'settings', icon: Settings, label: 'Setting' },
     ];
 
     const filteredMenu = menuItems.filter(item => {
         if (!item.roles) return true;
+        
         const userRole = user?.role?.toLowerCase();
-        const normalizedRole = userRole === 'warehouse' ? ROLES.WAREHOUSE : userRole === 'sales' ? ROLES.SALES_STAFF : userRole;
-        return item.roles.includes(normalizedRole);
+        
+        // Root has access to everything
+        if (userRole === ROLES.ROOT) return true;
+        
+        return item.roles.includes(userRole);
     });
 
     return (
