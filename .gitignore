@@ -18,6 +18,22 @@
 !inventory-system-specification.md
 !ROADMAP.md
 
+# Documentation and Reports
+API_DOCS.md
+ARCHITECTURE.md
+DETAILED_DOCS.md
+GSD-STYLE.md
+model_capabilities.yaml
+PRD_COMPLIANCE.md
+PROGRESS_REPORT.md
+PROJECT_REPORT.md
+PROJECT_RULES.md
+ROADMAP.md
+STACK.md
+TASK_REVIEW.md
+USER_MANUAL.md
+
+
 # Ignore everything else at root
 *
 !.gitignore
