@@ -14,7 +14,9 @@ import { useNavigate } from 'react-router-dom';
 const PurchaseOrders = () => {
     const navigate = useNavigate();
     const { data: poData, isLoading } = useGetPurchaseOrdersQuery();
-    const purchaseOrders = poData?.pos || [];
+    const purchaseOrders = Array.isArray(poData?.orders) ? poData.orders :
+                          Array.isArray(poData?.pos) ? poData.pos :
+                          Array.isArray(poData) ? poData : [];
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
 

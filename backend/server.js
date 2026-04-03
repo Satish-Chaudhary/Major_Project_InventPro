@@ -19,6 +19,8 @@ import customerRoutes from './routes/customer.routes.js'
 import salesOrderRoutes from './routes/salesOrder.routes.js'
 import invoiceRoutes from './routes/invoice.routes.js'
 import paymentRoutes from './routes/payment.routes.js'
+import backupRoutes from './routes/backup.routes.js'
+import systemRoutes from './routes/system.routes.js'
 import connectDB from './config/db.js';
 
 import { app, server } from './socket/socket.js';
@@ -56,6 +58,8 @@ app.use("/api/customers", customerRoutes);
 app.use("/api/sales-orders", salesOrderRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/backup", backupRoutes);
+app.use("/api/system", systemRoutes);
 
 server.listen(port, () => {
     connectDB();

@@ -185,23 +185,29 @@ const Dashboard = () => {
                 <div className="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-6">
                     <h1 className="text-white font-bold mb-6 text-lg tracking-tight">Inventory Watchlist</h1>
                     <div className="space-y-4">
-                        {inventory.filter(i => i.status !== 'in-stock').map((item) => (
-                            <div key={item.id} className="flex items-center justify-between p-4 bg-slate-800/20 rounded-xl border border-transparent hover:border-amber-500/20 transition-all">
+                        {inventory.filter(i => i.status === 'low stock' || i.status === 'out of stock').slice(0, 5).map((item) => (
+                            <div key={item._id} className="flex items-center justify-between p-4 bg-slate-800/20 rounded-xl border border-transparent hover:border-amber-500/20 transition-all">
                                 <div className="flex items-center gap-4">
                                     <div className="w-12 h-12 bg-linear-to-br from-slate-700 to-slate-800 rounded-xl flex items-center justify-center shadow-lg shadow-black/20">
                                         <Package className="w-6 h-6 text-slate-400" />
                                     </div>
                                     <div>
-                                        <p className="text-white text-sm font-bold">{item.name}</p>
-                                        <p className="text-slate-400 text-xs font-mono">{item.sku}</p>
+                                        <p className="text-white text-sm font-bold">{item.productName}</p>
+                                        <p className="text-slate-400 text-xs font-mono">{item.skuId || item.barcodeEAN}</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-white font-bold text-sm">{item.stock} <span className="text-slate-500 font-normal">in stock</span></p>
+                                    <p className="text-white font-bold text-sm">{item.initialQty} <span className="text-slate-500 font-normal">in stock</span></p>
                                     <div className="mt-1">{getStatusBadge(item.status)}</div>
                                 </div>
                             </div>
                         ))}
+                        {inventory.filter(i => i.status === 'low stock' || i.status === 'out of stock').length === 0 && (
+                            <div className="text-center py-8 text-slate-500">
+                                <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                                <p className="text-sm">All items are in stock</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

@@ -271,13 +271,111 @@ export const adjustStock = async (req, res) => {
             await sendNotification({ ...lowStockNotify, role: 'warehouse staff' });
         }
 
-        res.status(200).json({
+            res.status(200).json({
             success: true,
             message: "Stock adjusted successfully",
             product
         });
     } catch (error) {
         console.error("Error adjusting stock:", error);
+        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    }
+};
+
+// @desc    Bulk import products from CSV
+// @route   POST /api/product/bulk-import
+// @access  Private (Admin/Root/Manager)
+export const bulkImportProducts = async (req, res) => {
+    try {
+        const { products } = req.body;
+        
+        if (!products || !Array.isArray(products) || products.length === 0) {
+            return res.status(400).json({ success: false, message: "No products provided" });
+        }
+
+        const results = {
+            created: [],
+            skipped: [],
+            errors: []
+        };
+
+        for (const p of products) {
+            try {
+                const existingProduct = await Product.findOne({ skuId: p.skuId });
+                
+                if (existingProduct) {
+                    results.skipped.push({ skuId: p.skuId, reason: "SKU already exists" });
+                    continue;
+                }
+
+                const generatedProductId = `PRD-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 1000)}`;
+                
+                const newProduct = new Product({
+                    productName: p.productName,
+                    productId: generatedProductId,
+                    productDescription: p.productDescription || '',
+                    category: p.category || [],
+                    brand: p.brand || '',
+                    skuId: p.skuId,
+                    barcodeEAN: p.barcodeEAN || '',
+                    initialQty: Number(p.initialQty) || 0,
+                    lowStockThreshold: Number(p.lowStockThreshold) || 10,
+                    basePrice: Number(p.basePrice) || 0,
+                    costPrice: Number(p.costPrice) || 0,
+                    tax: Number(p.tax) || 0,
+                    status: p.initialQty > p.lowStockThreshold ? 'in stock' : 'low stock'
+                });
+
+                await newProduct.save();
+                results.created.push({ skuId: p.skuId, productName: p.productName });
+            } catch (err) {
+                results.errors.push({ skuId: p.skuId, error: err.message });
+            }
+        }
+
+        if (results.created.length > 0) {
+            io.emit("stock:updated", { type: "bulk_import", count: results.created.length });
+        }
+
+        res.status(201).json({
+            success: true,
+            message: `Import complete: ${results.created.length} created, ${results.skipped.length} skipped, ${results.errors.length} errors`,
+            results
+        });
+    } catch (error) {
+        console.error("Error in bulk import:", error);
+        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    }
+};
+
+// @desc    Export products to CSV format
+// @route   GET /api/product/export
+// @access  Private (Admin/Root/Accountant)
+export const exportProducts = async (req, res) => {
+    try {
+        const products = await Product.find().populate('category', 'catName');
+        
+        const exportData = products.map(p => ({
+            productName: p.productName,
+            skuId: p.skuId,
+            barcodeEAN: p.barcodeEAN || '',
+            category: p.category?.catName || '',
+            brand: p.brand || '',
+            initialQty: p.initialQty,
+            lowStockThreshold: p.lowStockThreshold,
+            basePrice: p.basePrice,
+            costPrice: p.costPrice || 0,
+            tax: p.tax || 0,
+            status: p.status
+        }));
+
+        res.status(200).json({
+            success: true,
+            products: exportData,
+            total: exportData.length
+        });
+    } catch (error) {
+        console.error("Error exporting products:", error);
         res.status(500).json({ success: false, message: "Server Error", error: error.message });
     }
 };

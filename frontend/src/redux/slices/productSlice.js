@@ -65,10 +65,10 @@ export const productApi = createApi({
       invalidatesTags: [{ type: 'Product', id: 'LIST' }],
     }),
     updateStock: builder.mutation({
-      query: ({ id, quantity, reason, notes }) => ({
-        url: `/products/${id}/stock`, // Need to verify if this exists in backend
+      query: ({ id, adjustment, reason, notes }) => ({
+        url: `/products/adjust-stock/${id}`,
         method: 'PATCH',
-        body: { quantity, reason, notes },
+        body: { adjustment, reason, notes },
       }),
       invalidatesTags: (result, error, { id }) => [{ type: 'Product', id }, { type: 'Product', id: 'LIST' }],
     }),
@@ -136,9 +136,11 @@ export const {
   useDeleteMultipleProductsMutation,
   useUpdateStockMutation,
   useGetLowStockQuery,
-  useBulkImportMutation,
   useExportProductsQuery,
+  useBulkImportMutation,
 } = productApi
+
+export const useImportProductsMutation = productApi.useBulkImportMutation
 
 export default productSlice.reducer
 

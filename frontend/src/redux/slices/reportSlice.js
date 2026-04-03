@@ -37,6 +37,10 @@ export const reportApi = createApi({
         body: downloadData,
       }),
     }),
+    getRecentExports: builder.query({
+      query: () => '/reports/recent-exports',
+      providesTags: ['Report'],
+    }),
     // Planned endpoints based on roadmap
     getInventoryValuation: builder.query({
       query: () => '/reports/inventory-valuation',
@@ -64,6 +68,7 @@ export const {
   useGetReportsQuery,
   useCreateReportScheduleMutation,
   useLogDownloadMutation,
+  useGetRecentExportsQuery,
   useGetInventoryValuationQuery,
   useGetSalesPerformanceQuery,
   useGetStockMovementQuery,

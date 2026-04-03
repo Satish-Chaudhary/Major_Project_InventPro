@@ -1,5 +1,4 @@
-# Ignore all root files and directories by default
-/*
+# Root level gitignore for InventPro
 
 # Allow crucial root configuration files
 !.gitignore
@@ -9,18 +8,39 @@
 !IMPLEMENTATION_REPORT.md
 !inventory-system-specification.md
 
-# Allow core application directories
+# Core application directories
 !backend/
 !frontend/
 
-# Note: Sub-directories like backend/node_modules should still be ignored
-# via their own .gitignore files or by specifying ignore rules below
+# Backend
 backend/node_modules/
 backend/.env
+backend/.env.production
+backend/logs/
+backend/dist/
+backend/build/
+
+# Frontend  
 frontend/node_modules/
 frontend/dist/
+frontend/build/
 frontend/.env
+frontend/.env.production
+
+# OS and IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# AI/Agent tool folders (do not push)
+.kilo/
 .agent/
 .gemini/
 .gsd/
-.DS_Store
+
+# Misc
+*.log
+*.tmp

@@ -1,4 +1,4 @@
-import Report from "../models/report.model.js";
+import { Report, DownloadLog } from "../models/report.model.js";
 import Order from "../models/order.model.js";
 import Product from "../models/product.model.js";
 import { logActivity } from "../utils/logger.utils.js";
@@ -8,7 +8,7 @@ import { logActivity } from "../utils/logger.utils.js";
 export const getSummaryReport = async (req, res) => {
     try {
         const { timeframe = 'all' } = req.query;
-        
+
         let dateFilter = {};
         if (timeframe === 'today') {
             const today = new Date().toISOString().split('T')[0];
@@ -21,7 +21,7 @@ export const getSummaryReport = async (req, res) => {
 
         // Aggregate orders
         const orders = await Order.find({ ...dateFilter, status: { $ne: 'cancelled' } });
-        
+
         const summary = orders.reduce((acc, order) => {
             const val = Number(order.value) || 0;
             if (order.type === 'outward') {
@@ -62,9 +62,34 @@ export const getSummaryReport = async (req, res) => {
 // @desc    Log a download/export action
 export const logDownload = async (req, res) => {
     try {
-        const { reportType, format } = req.body;
+        const { reportType, format, recordCount, fileName } = req.body;
+
+        // Save to DownloadLog
+        await DownloadLog.create({
+            userId: req.user._id,
+            reportType,
+            format,
+            fileName: fileName || `${reportType}_${new Date().toISOString().split('T')[0]}`,
+            recordCount: recordCount || 0,
+            status: 'success'
+        });
+
         await logActivity(req.user._id, `Exported ${reportType} report as ${format}`, 'reports', { reportType, format }, req.ip);
         res.status(200).json({ success: true, message: "Download logged" });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Get recent exports/downloads
+export const getRecentExports = async (req, res) => {
+    try {
+        const exports = await DownloadLog.find()
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .populate('userId', 'fullName');
+
+        res.status(200).json({ success: true, exports });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

@@ -7,9 +7,9 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useNavigate } from 'react-router-dom';
-import { 
-    useGetVendorsQuery, 
-    useDeleteVendorMutation 
+import {
+    useGetVendorsQuery,
+    useDeleteVendorMutation
 } from '../redux/slices/vendorSlice';
 import { useDeleteWithConfirm } from '../hooks/useDeleteWithConfirm';
 import { toast } from 'react-hot-toast';
@@ -17,22 +17,28 @@ import { exportToCSV } from '../utils/exportUtils';
 
 const Suppliers = () => {
     const navigate = useNavigate();
-    const { data: vendorsData } = useGetVendorsQuery();
+    const { data: vendorsData, isLoading, error } = useGetVendorsQuery();
     const [deleteVendor] = useDeleteVendorMutation();
     const confirmDelete = useDeleteWithConfirm();
 
-    const suppliers = vendorsData?.vendors || [];
+    // API returns { success: true, suppliers: [...] }
+    const suppliers = vendorsData?.suppliers || [];
+    const isEmpty = suppliers.length === 0 && !isLoading;
+
+    // Debug
+    console.log('Suppliers page:', { vendorsData, suppliers, isLoading, error });
     const [activeSuppliersTab, setActiveSuppliersTab] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
 
     const filteredSuppliers = suppliers.filter(sup => {
-        const matchesTab = activeSuppliersTab === 'all' || sup.status.toLowerCase() === activeSuppliersTab.toLowerCase();
-        const matchesSearch = 
+        const supplierStatus = sup.status?.toLowerCase() || 'inactive';
+        const matchesTab = activeSuppliersTab === 'all' || supplierStatus === activeSuppliersTab.toLowerCase();
+        const matchesSearch =
             sup.company?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             sup.code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             sup.email?.toLowerCase().includes(searchQuery.toLowerCase());
-        
+
         return matchesTab && matchesSearch;
     });
 
@@ -63,7 +69,7 @@ const Suppliers = () => {
                     <p className="text-slate-400 text-xs font-medium mt-1">Manage your global vendor network</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                    <button 
+                    <button
                         onClick={() => {
                             const exportData = suppliers.map(s => ({
                                 Company: s.company,
@@ -122,8 +128,8 @@ const Suppliers = () => {
                     />
                 </div>
                 <div className="relative group">
-                   <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" />
-                    <select 
+                    <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" />
+                    <select
                         className="w-full bg-slate-900/40 border border-slate-800 rounded-2xl pl-12 pr-4 py-4 text-xs font-bold text-slate-400 focus:outline-none appearance-none cursor-pointer hover:border-slate-700 transition-all uppercase tracking-widest"
                         onChange={(e) => setSelectedCategory(e.target.value)}
                     >
@@ -141,7 +147,24 @@ const Suppliers = () => {
 
             {/* Table View */}
             <div className="bg-slate-900/40 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
-                <div className="overflow-x-auto custom-scrollbar">
+                {isLoading ? (
+                    <div className="py-20 text-center">
+                        <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Loading suppliers...</p>
+                    </div>
+                ) : isEmpty || error ? (
+                    <div className="py-20 text-center space-y-4">
+                        <div className="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center mx-auto">
+                            <Users className="w-8 h-8 text-slate-600" />
+                        </div>
+                        <div>
+                            <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">
+                                {error ? 'Error loading suppliers' : 'No vendors found'}
+                            </p>
+                            {error && <p className="text-red-400 text-xs mt-2">{error.message}</p>}
+                        </div>
+                    </div>
+                ) : (
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-slate-800/20 text-slate-500 font-bold text-[10px] uppercase tracking-[0.2em] border-b border-slate-800">
@@ -156,8 +179,8 @@ const Suppliers = () => {
                         <tbody className="divide-y divide-slate-800">
                             <AnimatePresence>
                                 {filteredSuppliers.map((sup) => (
-                                    <motion.tr 
-                                        key={sup._id} 
+                                    <motion.tr
+                                        key={sup._id}
                                         layout
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
@@ -211,14 +234,14 @@ const Suppliers = () => {
                                         </td>
                                         <td className="px-8 py-7 text-right">
                                             <div className="flex items-center justify-end gap-1 px-2">
-                                                <button 
+                                                <button
                                                     onClick={() => handleEdit(sup)}
                                                     className="p-2.5 text-slate-500 hover:text-cyan-400 hover:bg-cyan-400/10 rounded-xl transition-all"
                                                     title="Edit Record"
                                                 >
                                                     <Edit3 className="w-4.5 h-4.5" />
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={() => handleDelete(sup._id)}
                                                     className="p-2.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all"
                                                     title="Remove Supplier"
@@ -232,19 +255,20 @@ const Suppliers = () => {
                             </AnimatePresence>
                         </tbody>
                     </table>
-                </div>
-                {filteredSuppliers.length === 0 && (
-                    <div className="py-20 text-center space-y-4">
-                        <div className="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center mx-auto">
-                            <Users className="w-8 h-8 text-slate-600" />
-                        </div>
-                        <div>
-                            <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No vendors found matching search</p>
-                        </div>
-                    </div>
                 )}
             </div>
-        </motion.div>
+            {filteredSuppliers.length === 0 && !isLoading && (
+                <div className="py-20 text-center space-y-4">
+                    <div className="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center mx-auto">
+                        <Users className="w-8 h-8 text-slate-600" />
+                    </div>
+                    <div>
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No vendors found matching search</p>
+                    </div>
+                </div>
+            )}
+        </motion.div >
+        // </div>
     );
 };
 

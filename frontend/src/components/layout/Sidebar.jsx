@@ -1,7 +1,7 @@
 import React from 'react';
 import {
     LayoutDashboard, Package, TrendingUp, Users,
-    Settings, BarChart3, ArrowUpDown, LogOut, ShieldCheck, History, Truck, ShoppingCart
+    Settings, BarChart3, ArrowUpDown, LogOut, ShieldCheck, History, Truck, ShoppingCart, ArrowRightLeft
 } from 'lucide-react';
 import SideNavHeader from './SideNavHeader.jsx';
 import SideNavLinks from './SideNavLinks.jsx';
@@ -21,10 +21,12 @@ const Sidebar = () => {
     const menuItems = [
         { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
         { id: 'inventory', icon: Package, label: 'Inventory Management' },
+        { id: 'stock-movement', icon: ArrowRightLeft, label: 'Stock Movement', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.WAREHOUSE] },
         { id: 'cart', icon: ShoppingCart, label: 'Shopping Cart (POS)' },
         { id: 'sales-orders', icon: TrendingUp, label: 'Client Sales', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.SALES_STAFF, ROLES.ACCOUNTANT] },
         { id: 'invoices', icon: History, label: 'Billing & Invoices', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.ACCOUNTANT, ROLES.MANAGER, ROLES.SALES_STAFF] },
         { id: 'customers', icon: Users, label: 'Customer CRM', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.SALES_STAFF, ROLES.ACCOUNTANT] },
+        { id: 'reports', icon: BarChart3, label: 'Reports', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT] },
         { id: 'settings', icon: Settings, label: 'Setting' },
     ];
 

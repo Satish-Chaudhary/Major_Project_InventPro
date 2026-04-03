@@ -21,6 +21,12 @@ export const vendorApi = createApi({
         url: '/suppliers/all',
         params,
       }),
+      transformResponse: (response) => {
+        return {
+          suppliers: response.suppliers || [],
+          total: response.suppliers?.length || 0
+        };
+      },
       providesTags: (result) =>
         result?.suppliers
           ? [

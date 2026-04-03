@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Download, Edit2, Trash2, Package, Check, RotateCcw, Settings, ShoppingCart } from 'lucide-react';
+import { Search, Plus, Download, Edit2, Trash2, Package, Check, RotateCcw, Settings, ShoppingCart, Upload } from 'lucide-react';
 import { clsx } from 'clsx';
 import { toast } from 'react-hot-toast'
 import { serverUrl } from '../config/api';
 import AdjustStockModal from './AdjustStockModal';
+import BulkImportModal from '../components/BulkImportModal';
 import { useDeleteWithConfirm } from '../hooks/useDeleteWithConfirm';
 import { exportToCSV } from '../utils/exportUtils';
 
@@ -29,6 +30,8 @@ const ProductsList = () => {
     const filters = useAppSelector(selectProductFilters);
     const userRole = user?.role?.toLowerCase();
     const confirmDelete = useDeleteWithConfirm();
+
+    const [showBulkImport, setShowBulkImport] = useState(false);
 
     const { data: productsData, isLoading, isFetching } = useGetProductsQuery(filters);
     const { data: categoriesData } = useGetCategoriesQuery();
@@ -111,7 +114,8 @@ const ProductsList = () => {
     const handleAdd = () => {
         dispatch(openModal({
             modalName: 'productForm',
-            mode: 'create'
+            mode: 'create',
+            product: null
         }));
     };
 
@@ -156,25 +160,36 @@ const ProductsList = () => {
                 </div>
                 <div className="flex items-center gap-3">
                     {canExport && (
-                        <button
-                            onClick={() => {
-                                const exportData = inventory.map(i => ({
-                                    ID: i.sku,
-                                    Name: i.productName,
-                                    Category: i.category?.catName || 'N/A',
-                                    Price: i.salePrice,
-                                    Cost: i.costPrice,
-                                    Stock: i.initialQty,
-                                    Status: i.status
-                                }));
-                                exportToCSV(exportData, `products_report_${new Date().toLocaleDateString()}`);
-                            }}
-                            disabled={!canExport}
-                            className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 text-slate-300 hover:text-white rounded-xl border border-slate-700 transition-all font-bold text-xs uppercase tracking-widest disabled:opacity-50"
-                        >
-                            <Download className="w-4 h-4" />
-                            Export CSV
-                        </button>
+                        <>
+                            <button
+                                onClick={() => setShowBulkImport(true)}
+                                disabled={!canAdd}
+                                className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 text-slate-300 hover:text-white rounded-xl border border-slate-700 transition-all font-bold text-xs uppercase tracking-widest disabled:opacity-50"
+                                title="Import products from CSV"
+                            >
+                                <Upload className="w-4 h-4" />
+                                Import
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const exportData = inventory.map(i => ({
+                                        ID: i.sku,
+                                        Name: i.productName,
+                                        Category: i.category?.catName || 'N/A',
+                                        Price: i.salePrice,
+                                        Cost: i.costPrice,
+                                        Stock: i.initialQty,
+                                        Status: i.status
+                                    }));
+                                    exportToCSV(exportData, `products_report_${new Date().toLocaleDateString()}`);
+                                }}
+                                disabled={!canExport}
+                                className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 text-slate-300 hover:text-white rounded-xl border border-slate-700 transition-all font-bold text-xs uppercase tracking-widest disabled:opacity-50"
+                            >
+                                <Download className="w-4 h-4" />
+                                Export CSV
+                            </button>
+                        </>
                     )}
                     {canAdd && (
                         <button
@@ -406,6 +421,11 @@ const ProductsList = () => {
                     />
                 )}
             </AnimatePresence>
+
+            <BulkImportModal
+                isOpen={showBulkImport}
+                onClose={() => setShowBulkImport(false)}
+            />
         </motion.div>
     );
 };

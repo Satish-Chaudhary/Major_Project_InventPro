@@ -12,6 +12,7 @@ const initialState = {
     vendorForm: { isOpen: false, mode: 'create', vendorId: null },
     stockAdjustment: { isOpen: false, productId: null },
     confirmation: { isOpen: false, message: '', onConfirm: null },
+    search: { isOpen: false },
   },
   loading: {
     global: false,

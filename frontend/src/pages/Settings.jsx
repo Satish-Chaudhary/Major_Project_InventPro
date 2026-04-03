@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import {
     Settings as SettingsIcon, Building2, ShieldCheck,
     BellRing, UserCog, Mail, Globe, Lock,
-    Key, Database, Check, Save, ArrowUpDown, Users
+    Key, Database, Check, Save, ArrowUpDown, Users, Download, Bell
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -74,6 +74,8 @@ const Settings = () => {
         { id: 'audit', icon: Database, label: 'Audit Logs', path: '/audit', roles: [ROLES.ADMIN, ROLES.ROOT] },
         { id: 'analytics', icon: Database, label: 'System Analytics', path: '/analytics', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT] },
         { id: 'reports', icon: Database, label: 'Advanced Reports', path: '/reports', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.ACCOUNTANT] },
+        { id: 'notification-settings', icon: Bell, label: 'Notification Settings', path: '/notification-settings', roles: [ROLES.ADMIN, ROLES.ROOT] },
+        { id: 'backup-export', icon: Download, label: 'Backup & Export', path: '/backup-export', roles: [ROLES.ADMIN, ROLES.ROOT] },
     ].filter(mod => {
         if (!mod.roles) return true;
         const userRole = user?.role?.toLowerCase();

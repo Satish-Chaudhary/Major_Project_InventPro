@@ -18,6 +18,7 @@ import { customerApi } from './slices/customerSlice'
 import { salesOrderApi } from './slices/salesOrderSlice'
 import { invoiceApi } from './slices/invoiceSlice'
 import { paymentApi } from './slices/paymentSlice'
+import { purchaseOrderApi } from './slices/purchaseOrderSlice'
 import cartReducer from './slices/cartSlice'
 
 const persistConfig = {
@@ -46,6 +47,7 @@ const rootReducer = combineReducers({
   [salesOrderApi.reducerPath]: salesOrderApi.reducer,
   [invoiceApi.reducerPath]: invoiceApi.reducer,
   [paymentApi.reducerPath]: paymentApi.reducer,
+  [purchaseOrderApi.reducerPath]: purchaseOrderApi.reducer,
   cart: cartReducer,
 })
 
@@ -71,7 +73,8 @@ export const store = configureStore({
       customerApi.middleware,
       salesOrderApi.middleware,
       invoiceApi.middleware,
-      paymentApi.middleware
+      paymentApi.middleware,
+      purchaseOrderApi.middleware
     ),
 })
 
