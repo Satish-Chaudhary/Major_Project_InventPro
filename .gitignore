@@ -1,46 +1,42 @@
-# Root level gitignore for InventPro
+# Ignore all markdown files at root except the ones we want to push
+*.md
 
-# Allow crucial root configuration files
-!.gitignore
-!README.md
-!WORKFLOW.md
-!ROADMAP.md
-!IMPLEMENTATION_REPORT.md
-!inventory-system-specification.md
+# Ignore other root level files
+*.txt
+*.json
+*.js
+*.ts
+*.py
+*.log
+*.tmp
+*.env
+*.env.production
+*.yaml
+*.yml
 
-# Core application directories
-!backend/
-!frontend/
+# Ignore common directories
+node_modules/
+dist/
+build/
+logs/
 
-# Backend
-backend/node_modules/
-backend/.env
-backend/.env.production
-backend/logs/
-backend/dist/
-backend/build/
-
-# Frontend  
-frontend/node_modules/
-frontend/dist/
-frontend/build/
-frontend/.env
-frontend/.env.production
-
-# OS and IDE
-.DS_Store
-Thumbs.db
+# Ignore IDE and OS files
 .vscode/
 .idea/
-*.swp
-*.swo
+.DS_Store
+Thumbs.db
 
-# AI/Agent tool folders (do not push)
+# Ignore AI/Agent tool folders
 .kilo/
 .agent/
 .gemini/
 .gsd/
 
-# Misc
-*.log
-*.tmp
+# Allow only specific files and folders to push
+!README.md
+!WORKFLOW.md
+!IMPLEMENTATION_REPORT.md
+!inventory-system-specification.md
+!.gitignore
+!frontend/
+!backend/
