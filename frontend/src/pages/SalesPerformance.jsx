@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { TrendingUp, DollarSign, ShoppingBag, Users, ArrowUp, ArrowDown } from 'lucide-react';
@@ -9,11 +9,12 @@ import { exportToCSV } from '../utils/exportUtils';
 const COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'];
 
 const SalesPerformance = () => {
+  const [timeframe, setTimeframe] = useState('month'); // 'day', 'month', 'year'
   const { data: ordersData } = useGetSalesOrdersQuery({ limit: 1000 });
   const { data: customersData } = useGetCustomersQuery();
 
-  const orders = Array.isArray(ordersData?.orders) ? ordersData.orders : 
-                 Array.isArray(ordersData) ? ordersData : [];
+  const orders = Array.isArray(ordersData?.orders) ? ordersData.orders :
+    Array.isArray(ordersData) ? ordersData : [];
   const customers = customersData?.customers || [];
 
   const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
@@ -22,17 +23,53 @@ const SalesPerformance = () => {
   const paidOrders = orders.filter(o => o.paymentStatus === 'paid').length;
   const pendingOrders = orders.filter(o => o.paymentStatus === 'pending' || o.paymentStatus === 'partial').length;
 
-  const monthlyData = orders.reduce((acc, order) => {
-    const month = new Date(order.createdAt).toLocaleString('default', { month: 'short' });
-    if (!acc[month]) {
-      acc[month] = { month, revenue: 0, orders: 0 };
-    }
-    acc[month].revenue += order.total || 0;
-    acc[month].orders += 1;
-    return acc;
-  }, {});
+  const trendData = [];
+  const now = new Date();
 
-  const monthlyChartData = Object.values(monthlyData).slice(-6);
+  if (timeframe === 'day') {
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+      const label = d.toLocaleDateString('default', { month: 'short', day: 'numeric' });
+
+      const dayOrders = orders.filter(o => {
+        const od = new Date(o.createdAt);
+        return od.getDate() === d.getDate() && od.getMonth() === d.getMonth() && od.getFullYear() === d.getFullYear();
+      });
+
+      const revenue = dayOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+      const count = dayOrders.length;
+
+      trendData.push({ label, revenue, orders: count });
+    }
+  } else if (timeframe === 'year') {
+    for (let i = 4; i >= 0; i--) {
+      const year = now.getFullYear() - i;
+      const label = year.toString();
+
+      const yearOrders = orders.filter(o => new Date(o.createdAt).getFullYear() === year);
+
+      const revenue = yearOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+      const count = yearOrders.length;
+
+      trendData.push({ label, revenue, orders: count });
+    }
+  } else {
+    // Month view (default)
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const label = d.toLocaleString('default', { month: 'short' });
+
+      const monthOrders = orders.filter(o => {
+        const od = new Date(o.createdAt);
+        return od.toLocaleString('default', { month: 'short' }) === label && od.getFullYear() === d.getFullYear();
+      });
+
+      const revenue = monthOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+      const count = monthOrders.length;
+
+      trendData.push({ label, revenue, orders: count });
+    }
+  }
 
   const orderStatusData = [
     { name: 'Delivered', value: orders.filter(o => o.orderStatus === 'delivered').length },
@@ -133,17 +170,33 @@ const SalesPerformance = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue Trend */}
         <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-white mb-4">Revenue Trend</h3>
-          {monthlyChartData.length > 0 ? (
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-white ">Revenue Trend</h3>
+            <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
+              {['day', 'month', 'year'].map((pt) => (
+                <button
+                  key={pt}
+                  onClick={() => setTimeframe(pt)}
+                  className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${timeframe === pt
+                      ? "bg-purple-600 text-white shadow-lg"
+                      : "text-slate-500 hover:text-slate-300"
+                    }`}
+                >
+                  {pt}
+                </button>
+              ))}
+            </div>
+          </div>
+          {trendData.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
-              <AreaChart data={monthlyChartData}>
+              <AreaChart data={trendData}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
                     <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="month" tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                <XAxis dataKey="label" tick={{ fill: '#94a3b8', fontSize: 10 }} />
                 <YAxis tickFormatter={(value) => `$${value.toLocaleString()}`} tick={{ fill: '#94a3b8', fontSize: 12 }} />
                 <Tooltip
                   contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}

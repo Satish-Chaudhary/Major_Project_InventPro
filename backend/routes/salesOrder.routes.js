@@ -15,14 +15,14 @@ const salesOrderRouter = express.Router();
 salesOrderRouter.use(authMiddleware);
 
 // Core CRUD for Sales Orders
-salesOrderRouter.post('/create', authorize(['admin', 'root', 'staff']), createSalesOrder);
-salesOrderRouter.get('/all', authorize(['admin', 'root', 'staff', 'viewer']), getSalesOrders);
-salesOrderRouter.get('/:id', authorize(['admin', 'root', 'staff', 'viewer']), getSalesOrderById);
+salesOrderRouter.post('/create', authorize(['admin', 'root', 'manager', 'sales staff']), createSalesOrder);
+salesOrderRouter.get('/all', authorize(['admin', 'root', 'manager', 'sales staff', 'accountant', 'staff', 'warehouse staff']), getSalesOrders);
+salesOrderRouter.get('/:id', authorize(['admin', 'root', 'manager', 'sales staff', 'accountant', 'staff', 'warehouse staff']), getSalesOrderById);
 
 // Order Status & Updates
-salesOrderRouter.patch('/status/:id', authorize(['admin', 'root', 'staff']), updateOrderStatus);
+salesOrderRouter.patch('/status/:id', authorize(['admin', 'root', 'manager', 'sales staff']), updateOrderStatus);
 
 // Customer history routes
-salesOrderRouter.get('/customer/:customerId', authorize(['admin', 'root', 'staff', 'viewer']), getCustomerOrders);
+salesOrderRouter.get('/customer/:customerId', authorize(['admin', 'root', 'manager', 'sales staff', 'accountant']), getCustomerOrders);
 
 export default salesOrderRouter;

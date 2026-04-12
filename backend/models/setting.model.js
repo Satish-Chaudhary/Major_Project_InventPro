@@ -12,6 +12,14 @@ const SettingSchema = new mongoose.Schema({
     },
     notifEmail: {
         type: String
+    },
+    backupReminderEnabled: {
+        type: Boolean,
+        default: true
+    },
+    lastBackupTime: {
+        type: Date,
+        default: Date.now
     }
 }, { timestamps: true });
 

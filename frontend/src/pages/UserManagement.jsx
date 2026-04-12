@@ -5,7 +5,7 @@ import {
     Users, UserPlus, Shield, ShieldCheck,
     Key, Mail, Search, MoreVertical,
     ShieldAlert, History, Edit2, Trash2,
-    CheckCircle2, XCircle, ChevronRight,
+    CheckCircle2, XCircle, ChevronRight, ChevronLeft,
     User
 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -16,54 +16,68 @@ import { useSocketContext } from '../context/SocketContext';
 import { getStatusBadge } from '../utils/badgeStyles.jsx';
 import { ROLES } from '../config/permissions';
 import { useNavigate } from 'react-router-dom';
-import { 
-    useGetUsersQuery, 
-    useGetRolesQuery, 
+import {
+    useGetUsersQuery,
+    useGetRolesQuery,
     useDeleteUserMutation,
-    useDeleteRoleMutation 
+    useDeleteRoleMutation
 } from '../redux/slices/adminSlice';
 
 const permissionDescriptions = {
-    'create_product': 'Allows creating new inventory items',
-    'edit_product': 'Allows modifying existing products',
-    'delete_product': 'Allows permanent removal of catalog entries',
-    'update_stock': 'Controls stock level adjustments and inventory counts',
-    'manage_users': 'Full control over user accounts and access levels',
-    'view_reports': 'Access to analytics, financial reports and system audits',
-    'manage_roles': 'Creation and configuration of security clearance archetypes',
-    'manage_suppliers': 'Manage vendor relationships and supply chains',
-    'manage_orders': 'Handle procurement and sales order lifecycles'
+    'manage_users': 'Full control over user accounts, onboarding and access levels',
+    'approve_requests': 'Authorize or revoke pending staff registration requests',
+    'full_audit': 'Comprehensive access to system-wide activity logs and trace data',
+    'system_settings': 'Modification of global application parameters and infrastructure',
+    'product_crud': 'Full lifecycle management of inventory products and assets',
+    'category_crud': 'Configuration of product taxonomy and organizational groups',
+    'vendor_registry': 'Management of supplier profiles and vendor performance metrics',
+    'system_analytics': 'Advanced data visualization and operational intelligence',
+    'advanced_reports': 'Generation of deep-dive financial and stock movement records',
+    'cost_auditing': 'Detailed oversight of procurement costs and profit margins',
+    'order_history': 'Read-only access to historical transaction and movement logs',
+    'stock_updates': 'Adjustment of real-time stock levels and warehouse quantities',
+    'procurement_tracking': 'Oversight of incoming supplies and purchase order statuses',
+    'inventory_read': 'Basic visibility into inventory levels and product data',
+    'create_sales_orders': 'Generation and processing of customer sales transactions',
+    'sales_metrics': 'Tracking of commercial performance and revenue statistics',
+    'product_discovery': 'Search and discovery capabilities within the product catalog'
 };
 
 const UserManagement = () => {
     const navigate = useNavigate();
     const currentUser = useAppSelector(selectUser);
-    const { data: usersData, isLoading: usersLoading } = useGetUsersQuery();
-    const { data: rolesData } = useGetRolesQuery();
-    const [deleteUser] = useDeleteUserMutation();
-    const [deleteRole] = useDeleteRoleMutation();
     const { onlineUsers } = useSocketContext();
-
-    const users = usersData?.users || [];
-    const allRoles = rolesData?.roles || [];
-    const onAddClick = () => navigate('/add-user');
-    const [activeSubTab, setActiveSubTab] = useState('all-users');
+    const [currentPage, setCurrentPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState('');
     const [roleFilter, setRoleFilter] = useState('All Roles');
     const [statusFilter, setStatusFilter] = useState('All Status');
+
+    const { data: usersData, isLoading: usersLoading } = useGetUsersQuery({
+        page: currentPage,
+        search: searchQuery,
+        role: roleFilter,
+        status: statusFilter
+    });
+    
+    const { data: rolesData } = useGetRolesQuery();
+    const [deleteUser] = useDeleteUserMutation();
+    const [deleteRole] = useDeleteRoleMutation();
+
+    // Reset to page 1 when filters change
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, roleFilter, statusFilter]);
+
+    const users = usersData?.users || [];
+    const pagination = usersData?.pagination || { total: 0, pages: 0, page: 1 };
+    const allRoles = rolesData?.roles || [];
+    const onAddClick = () => navigate('/add-user');
+    const [activeSubTab, setActiveSubTab] = useState('all-users');
     const [activeRoleMenu, setActiveRoleMenu] = useState(null);
     const [expandedRole, setExpandedRole] = useState(null);
 
 
-    const filteredUsers = useMemo(() => {
-        return users.filter(user => {
-            const matchesSearch = user.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                user.email?.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesRole = roleFilter === 'All Roles' || user.role?.toLowerCase() === roleFilter.toLowerCase();
-            const matchesStatus = statusFilter === 'All Status' || user.status?.toLowerCase() === statusFilter.toLowerCase();
-            return matchesSearch && matchesRole && matchesStatus;
-        });
-    }, [users, searchQuery, roleFilter, statusFilter]);
+    const filteredUsers = users; 
 
     const subTabs = [
         { id: 'all-users', label: 'All Users', icon: Users },
@@ -158,6 +172,7 @@ const UserManagement = () => {
                                         <th className="px-8 py-5 w-12"><input type="checkbox" className="rounded bg-slate-900 border-slate-700" /></th>
                                         <th className="px-8 py-5">User</th>
                                         <th className="px-8 py-5">Role</th>
+                                        <th className="px-8 py-5">Department</th>
                                         <th className="px-8 py-5">Status</th>
                                         <th className="px-8 py-5">Last Active</th>
                                         <th className="px-8 py-5 text-right">Actions</th>
@@ -173,23 +188,30 @@ const UserManagement = () => {
                                                 <td className="px-8 py-5"><input type="checkbox" className="rounded bg-slate-900 border-slate-700" disabled={isAdminViewingRoot} /></td>
                                                 <td className="px-8 py-5">
                                                     <div className="flex items-center gap-4">
-                                                        <div className="relative w-10 h-10 rounded-full bg-slate-800 border-2 border-slate-700 p-0.5 group-hover:border-purple-500/30 transition-all">
-                                                            <img src={`https://i.pravatar.cc/100?u=${u.email}`} alt={u.fullName} className="w-full h-full rounded-full grayscale group-hover:grayscale-0 transition-all" />
+                                                        <div className="relative w-10 h-10 rounded-full bg-slate-800 border-2 border-slate-700 p-0.5 group-hover:border-purple-500/30 transition-all overflow-hidden">
+                                                            <img 
+                                                                src={u.profilePic || `https://i.pravatar.cc/100?u=${u.email}`} 
+                                                                alt={u.fullName} 
+                                                                className="w-full h-full rounded-full grayscale group-hover:grayscale-0 transition-all object-cover" 
+                                                            />
                                                             {onlineUsers.includes(u._id) && (
                                                                 <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse" />
                                                             )}
                                                         </div>
                                                         <div>
                                                             <p className="text-white font-bold text-sm leading-tight">{u.fullName}</p>
-                                                            <p className="text-slate-500 text-xs font-medium md:max-w-[150px] truncate">{isAdminViewingRoot ? "••••••••••••" : u.email}</p>
+                                                            <p className="text-slate-500 text-xs font-medium md:max-w-[150px] truncate">{u.email}</p>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-5">
                                                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-slate-700/50 bg-slate-800/30 shadow-inner text-slate-400">
                                                         {isRoot ? <ShieldAlert className="w-3 h-3 text-purple-400" /> : u.role === 'admin' ? <ShieldCheck className="w-3 h-3 text-cyan-400" /> : <User className="w-3 h-3" />}
-                                                        {isAdminViewingRoot ? "Elevated Clearance" : u.role}
+                                                        {u.role}
                                                     </div>
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">{u.department || 'N/A'}</p>
                                                 </td>
                                                 <td className="px-8 py-5">
                                                     {getStatusBadge(u.status)}
@@ -198,10 +220,15 @@ const UserManagement = () => {
                                                     {u.updatedAt ? format(new Date(u.updatedAt), 'MMM dd, HH:mm') : 'N/A'}
                                                 </td>
                                                 <td className="px-8 py-5 text-right">
-                                                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <div className="flex items-center justify-end gap-1 transition-opacity">
                                                         {!isAdminViewingRoot && (
                                                             <>
-                                                                <button className="p-2 text-slate-500 hover:text-cyan-400 hover:bg-cyan-400/10 rounded-lg transition-all"><Edit2 className="w-4 h-4" /></button>
+                                                                <button
+                                                                    onClick={() => navigate('/add-user', { state: { editUser: u } })}
+                                                                    className="p-2 text-slate-500 hover:text-cyan-400 hover:bg-cyan-400/10 rounded-lg transition-all"
+                                                                >
+                                                                    <Edit2 className="w-4 h-4" />
+                                                                </button>
                                                                 <button
                                                                     onClick={() => {
                                                                         if (window.confirm('Delete this user?')) deleteUser(u._id);
@@ -224,6 +251,47 @@ const UserManagement = () => {
                                     })}
                                 </tbody>
                             </table>
+
+                            {/* Pagination Controls */}
+                            <div className="px-8 py-4 border-t border-slate-800 bg-slate-900/20 flex items-center justify-between">
+                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">
+                                    Showing {pagination.total === 0 ? 0 : (currentPage - 1) * 10 + 1} to {Math.min(currentPage * 10, pagination.total)} of {pagination.total} USERS
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        disabled={currentPage === 1}
+                                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                        className="p-2 text-slate-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        <ChevronLeft className="w-4 h-4" />
+                                    </button>
+                                    
+                                    <div className="flex items-center gap-1">
+                                        {[...Array(pagination.pages)].map((_, i) => (
+                                            <button
+                                                key={i + 1}
+                                                onClick={() => setCurrentPage(i + 1)}
+                                                className={clsx(
+                                                    "w-8 h-8 rounded-lg text-xs font-bold transition-all",
+                                                    currentPage === i + 1 
+                                                        ? "bg-purple-600/20 text-purple-400 border border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.15)]" 
+                                                        : "text-slate-500 hover:text-white hover:bg-slate-800"
+                                                )}
+                                            >
+                                                {i + 1}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <button
+                                        disabled={currentPage === pagination.pages || pagination.pages === 0}
+                                        onClick={() => setCurrentPage(prev => Math.min(pagination.pages, prev + 1))}
+                                        className="p-2 text-slate-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </motion.div>
                 )}
@@ -268,40 +336,18 @@ const UserManagement = () => {
                                     </div>
 
                                     <div className="flex items-center gap-3 ml-auto">
-                                        <div className="relative">
+                                        {role.name?.toLowerCase() !== 'root' && (
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    setActiveRoleMenu(activeRoleMenu === role._id ? null : role._id);
+                                                    if (window.confirm('Delete this role?')) deleteRole(role._id);
                                                 }}
-                                                className="p-2.5 rounded-xl bg-slate-950/40 text-slate-500 hover:text-white transition-all border border-slate-800/50"
+                                                className="p-2.5 rounded-xl bg-slate-950/40 text-slate-500 hover:text-red-400 transition-all border border-slate-800/50"
+                                                title="Delete Role"
                                             >
-                                                <MoreVertical className="w-4 h-4" />
+                                                <Trash2 className="w-4 h-4" />
                                             </button>
-
-                                            <AnimatePresence>
-                                                {activeRoleMenu === role._id && (
-                                                    <motion.div
-                                                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                                                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                                                        className="absolute right-0 top-full mt-2 w-48 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 py-2"
-                                                    >
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                if (window.confirm('Delete this role?')) deleteRole(role._id);
-                                                                setActiveRoleMenu(null);
-                                                            }}
-                                                            className="w-full flex items-center gap-3 px-4 py-2.5 text-red-400 hover:bg-red-500/10 transition-all text-[10px] font-bold uppercase tracking-widest"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                            Delete Role
-                                                        </button>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
-                                        </div>
+                                        )}
                                         <button
                                             onClick={() => setExpandedRole(expandedRole === role._id ? null : role._id)}
                                             className={clsx(

@@ -2,6 +2,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
+import BackupReminder from '../BackupReminder';
 import { useAppDispatch } from '../../redux/hooks';
 import { setActiveTab } from '../../redux/slices/uiSlice';
 
@@ -27,6 +28,7 @@ const MainLayout = () => {
                     <Outlet />
                 </main>
             </div>
+            <BackupReminder />
         </div>
     );
 };

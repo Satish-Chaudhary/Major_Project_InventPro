@@ -1,4 +1,6 @@
+import mongoose from "mongoose";
 import Product from "../models/product.model.js";
+import Category from "../models/category.model.js";
 import { logActivity } from "../utils/logger.utils.js";
 import { io } from "../socket/socket.js";
 import { sendNotification } from "../utils/notification.utils.js";
@@ -26,11 +28,99 @@ export const addProduct = async (req, res) => {
 
         const productImage = req.file ? req.file.path : '';
 
-        // Check if SKU already exists
-        const existingProduct = await Product.findOne({ skuId });
-        if (skuId && existingProduct) {
-            return res.status(400).json({ success: false, message: "Product with this SKU already exists" });
+        // ============================================
+        // CATEGORY HANDLING - THE FIX
+        // ============================================
+        
+        let processedCategories = [];
+
+        if (category) {
+            // Step 1: Parse if category is a string (e.g., from form-data or JSON string)
+            let categoryArray = category;
+            
+            if (typeof category === 'string') {
+                try {
+                    // Try parsing JSON string like "['Electronics', 'Phones']"
+                    categoryArray = JSON.parse(category);
+                } catch {
+                    // If not valid JSON, maybe it's a single string "Electronics"
+                    categoryArray = [category];
+                }
+            }
+
+            // Step 2: Ensure it's an array
+            if (!Array.isArray(categoryArray)) {
+                categoryArray = [categoryArray];
+            }
+
+            // Step 3: Process each category - convert names to ObjectIds
+            const categoryPromises = categoryArray.map(async (cat) => {
+                // Check if it's already a valid ObjectId
+                if (mongoose.Types.ObjectId.isValid(cat)) {
+                    return cat;
+                }
+
+                // It's a category name - try to find the Category by catName
+                const foundCategory = await Category.findOne({ 
+                    catName: { $regex: new RegExp(`^${cat}$`, 'i') } 
+                });
+                
+                if (foundCategory) {
+                    return foundCategory._id;
+                }
+
+                // Category not found - return null (will handle validation later)
+                return null;
+            });
+
+            const resolvedCategories = await Promise.all(categoryPromises);
+            
+            // Filter out null values (invalid categories)
+            processedCategories = resolvedCategories.filter(cat => cat !== null);
+
+            // Validate: if some categories were not found, warn but continue
+            const invalidCategories = categoryArray.filter((cat, index) => 
+                resolvedCategories[index] === null
+            );
+            
+            if (invalidCategories.length > 0) {
+                console.warn(`Warning: Categories not found: ${invalidCategories.join(', ')}`);
+            }
         }
+
+        // ============================================
+        // VALIDATION
+        // ============================================
+
+        // Check if SKU already exists
+        if (skuId) {
+            const existingProduct = await Product.findOne({ skuId });
+            if (existingProduct) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "Product with this SKU already exists" 
+                });
+            }
+        }
+
+        // Validate required fields
+        if (!productName) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Product name is required" 
+            });
+        }
+
+        if (!basePrice || isNaN(basePrice)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Valid base price is required" 
+            });
+        }
+
+        // ============================================
+        // CREATE PRODUCT
+        // ============================================
 
         // Auto-generate Product ID if not provided
         const generatedProductId = productId || `PRD-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 1000)}`;
@@ -39,23 +129,29 @@ export const addProduct = async (req, res) => {
             productName,
             productId: generatedProductId,
             productDescription,
-            category,
+            category: processedCategories, // Use processed categories
             brand,
             skuId,
             barcodeEAN,
-            initialQty: Number(initialQty),
-            lowStockThreshold: Number(lowStockThreshold),
+            initialQty: Number(initialQty) || 0,
+            lowStockThreshold: Number(lowStockThreshold) || 10,
             productImage,
             basePrice: Number(basePrice),
-            costPrice: Number(costPrice),
-            tax: Number(tax),
+            costPrice: Number(costPrice) || 0,
+            tax: Number(tax) || 0,
             status: status || 'in stock'
         });
 
         await newProduct.save();
 
         // Log activity
-        await logActivity(req.user._id, `Added new product: ${productName}`, 'inventory', { productId: newProduct._id }, req.ip);
+        await logActivity(
+            req.user._id, 
+            `Added new product: ${productName}`, 
+            'inventory', 
+            { productId: newProduct._id }, 
+            req.ip
+        );
 
         // Emit real-time update
         io.emit("stock:updated", newProduct);
@@ -67,7 +163,21 @@ export const addProduct = async (req, res) => {
         });
     } catch (error) {
         console.error("Error adding product:", error);
-        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+        
+        // Handle specific Mongoose validation errors
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Validation Error", 
+                error: error.message 
+            });
+        }
+
+        res.status(500).json({ 
+            success: false, 
+            message: "Server Error", 
+            error: error.message 
+        });
     }
 };
 
@@ -89,16 +199,38 @@ export const getAllProducts = async (req, res) => {
                 { productId: { $regex: search, $options: 'i' } }
             ];
         }
-        if (category && category !== 'All') {
-            filter.category = category;
-        }
+
         if (status && status !== 'All') {
-            filter.status = { $regex: status, $options: 'i' };
+            filter.status = status.toLowerCase();
+        }
+
+        if (category && category !== 'All') {
+            // Find the category first to get its ID
+            const foundCategory = await Category.findOne({ 
+                catName: { $regex: new RegExp(`^${category}$`, 'i') } 
+            });
+            
+            if (foundCategory) {
+                filter.category = foundCategory._id;
+            } else if (mongoose.Types.ObjectId.isValid(category)) {
+                // If it's already an ID
+                filter.category = category;
+            } else {
+                // Category not found, return empty results
+                return res.status(200).json({
+                    success: true,
+                    products: [],
+                    total: 0,
+                    page: Number(page),
+                    pages: 0
+                });
+            }
         }
 
         const skip = (page - 1) * safeLimit;
         const total = await Product.countDocuments(filter);
         const products = await Product.find(filter)
+            .populate('category', 'catName')
             .sort({ [sort]: order === 'desc' ? -1 : 1 })
             .skip(skip)
             .limit(safeLimit);
@@ -147,6 +279,38 @@ export const updateProduct = async (req, res) => {
             updatedData.productImage = req.file.path;
         }
 
+        // ============================================
+        // CATEGORY HANDLING (for updates too)
+        // ============================================
+        if (updatedData.category) {
+            let categoryArray = updatedData.category;
+            
+            if (typeof categoryArray === 'string') {
+                try {
+                    categoryArray = JSON.parse(categoryArray);
+                } catch {
+                    categoryArray = [categoryArray];
+                }
+            }
+
+            if (!Array.isArray(categoryArray)) {
+                categoryArray = [categoryArray];
+            }
+
+            const categoryPromises = categoryArray.map(async (cat) => {
+                if (mongoose.Types.ObjectId.isValid(cat)) {
+                    return cat;
+                }
+                const foundCategory = await Category.findOne({ 
+                    catName: { $regex: new RegExp(`^${cat}$`, 'i') } 
+                });
+                return foundCategory ? foundCategory._id : null;
+            });
+
+            const resolvedCategories = await Promise.all(categoryPromises);
+            updatedData.category = resolvedCategories.filter(cat => cat !== null);
+        }
+
         // Ensure numeric fields are converted (since Multipart/form-data sends everything as strings)
         if (updatedData.initialQty) updatedData.initialQty = Number(updatedData.initialQty);
         if (updatedData.lowStockThreshold) updatedData.lowStockThreshold = Number(updatedData.lowStockThreshold);
@@ -160,11 +324,16 @@ export const updateProduct = async (req, res) => {
             return res.status(404).json({ success: false, message: "Product not found" });
         }
 
-        // Log activity
-        await logActivity(req.user._id, `Updated product: ${product.productName}`, 'inventory', { productId: product._id }, req.ip);
+        // Log activity (non-blocking)
+        logActivity(req.user._id, `Updated product: ${product.productName}`, 'inventory', { productId: product._id }, req.ip)
+            .catch(err => console.error("Activity log error:", err));
 
-        // Emit real-time update
-        io.emit("stock:updated", product);
+        // Emit real-time update (wrapped in try-catch)
+        try {
+            io.emit("stock:updated", product);
+        } catch (socketError) {
+            console.error("Socket emit error:", socketError);
+        }
 
         res.status(200).json({
             success: true,
@@ -173,6 +342,15 @@ export const updateProduct = async (req, res) => {
         });
     } catch (error) {
         console.error("Error updating product:", error);
+        
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Validation Error", 
+                error: error.message 
+            });
+        }
+
         res.status(500).json({ success: false, message: "Server Error", error: error.message });
     }
 };
@@ -189,11 +367,25 @@ export const deleteProduct = async (req, res) => {
             return res.status(404).json({ success: false, message: "Product not found" });
         }
 
-        // Log activity
-        await logActivity(req.user._id, `Deleted product: ${product.productName}`, 'inventory', { productId: product._id }, req.ip);
+        // ============================================
+        // FIX: Non-blocking operations
+        // ============================================
 
-        // Emit real-time update
-        io.emit("stock:updated", { _id: id, deleted: true });
+        // Log activity (non-blocking - don't await!)
+        logActivity(
+            req.user._id, 
+            `Deleted product: ${product.productName}`, 
+            'inventory', 
+            { productId: product._id }, 
+            req.ip
+        ).catch(err => console.error("Activity log error:", err));
+
+        // Emit socket event (wrapped in try-catch to prevent crashes)
+        try {
+            io.emit("stock:updated", { _id: id, deleted: true, productName: product.productName });
+        } catch (socketError) {
+            console.error("Socket emit error:", socketError);
+        }
 
         res.status(200).json({
             success: true,
@@ -204,6 +396,46 @@ export const deleteProduct = async (req, res) => {
         res.status(500).json({ success: false, message: "Server Error", error: error.message });
     }
 };
+
+// @desc    Delete multiple products by IDs
+// @route   POST /api/products/delete-multiple
+// @access  Private (Admin/Root/Manager)
+export const deleteMultipleProducts = async (req, res) => {
+    try {
+        const { ids } = req.body;
+
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ success: false, message: "No product IDs provided" });
+        }
+
+        const result = await Product.deleteMany({ _id: { $in: ids } });
+
+        // Log activity (non-blocking)
+        logActivity(
+            req.user._id,
+            `Bulk deleted ${result.deletedCount} products`,
+            'inventory',
+            { ids },
+            req.ip
+        ).catch(err => console.error("Activity log error:", err));
+
+        // Emit socket event
+        try {
+            io.emit("stock:updated", { type: "bulk_delete", ids, deletedCount: result.deletedCount });
+        } catch (socketError) {
+            console.error("Socket emit error:", socketError);
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `Successfully deleted ${result.deletedCount} products`
+        });
+    } catch (error) {
+        console.error("Error deleting multiple products:", error);
+        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    }
+};
+
 // @desc    Adjust product stock
 // @route   PATCH /api/product/adjust-stock/:id
 // @access  Private (Admin/Manager/Warehouse)
@@ -242,16 +474,16 @@ export const adjustStock = async (req, res) => {
 
         // Log activity with details
         await logActivity(
-            req.user._id, 
-            `Stock adjusted for ${product.productName}: ${adjustment > 0 ? '+' : ''}${adjustment} (Reason: ${reason})`, 
-            'inventory', 
-            { 
-                productId: product._id, 
-                oldQty, 
+            req.user._id,
+            `Stock adjusted for ${product.productName}: ${adjustment > 0 ? '+' : ''}${adjustment} (Reason: ${reason})`,
+            'inventory',
+            {
+                productId: product._id,
+                oldQty,
                 newQty: product.initialQty,
                 reason,
                 notes
-            }, 
+            },
             req.ip
         );
 
@@ -271,7 +503,7 @@ export const adjustStock = async (req, res) => {
             await sendNotification({ ...lowStockNotify, role: 'warehouse staff' });
         }
 
-            res.status(200).json({
+        res.status(200).json({
             success: true,
             message: "Stock adjusted successfully",
             product
@@ -288,7 +520,7 @@ export const adjustStock = async (req, res) => {
 export const bulkImportProducts = async (req, res) => {
     try {
         const { products } = req.body;
-        
+
         if (!products || !Array.isArray(products) || products.length === 0) {
             return res.status(400).json({ success: false, message: "No products provided" });
         }
@@ -302,14 +534,14 @@ export const bulkImportProducts = async (req, res) => {
         for (const p of products) {
             try {
                 const existingProduct = await Product.findOne({ skuId: p.skuId });
-                
+
                 if (existingProduct) {
                     results.skipped.push({ skuId: p.skuId, reason: "SKU already exists" });
                     continue;
                 }
 
                 const generatedProductId = `PRD-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 1000)}`;
-                
+
                 const newProduct = new Product({
                     productName: p.productName,
                     productId: generatedProductId,
@@ -354,7 +586,7 @@ export const bulkImportProducts = async (req, res) => {
 export const exportProducts = async (req, res) => {
     try {
         const products = await Product.find().populate('category', 'catName');
-        
+
         const exportData = products.map(p => ({
             productName: p.productName,
             skuId: p.skuId,

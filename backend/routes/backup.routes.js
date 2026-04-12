@@ -6,6 +6,7 @@ import Customer from '../models/customer.model.js';
 import SalesOrder from '../models/salesOrder.model.js';
 import Invoice from '../models/invoice.model.js';
 import User from '../models/auth.model.js';
+import Setting from '../models/setting.model.js';
 import { authMiddleware } from '../middleware/isAuth.middleware.js';
 import { authorize } from '../middleware/role.middleware.js';
 
@@ -21,6 +22,9 @@ router.get('/export', authMiddleware, authorize(['admin', 'root']), async (req, 
       version: '1.0.0',
       data: {}
     };
+
+    // Update last backup time in settings
+    await Setting.findOneAndUpdate({}, { lastBackupTime: new Date() }, { upsert: true });
 
     backup.data.products = await Product.find().populate('category', 'catName');
     backup.data.categories = await Category.find();
@@ -41,6 +45,22 @@ router.get('/export', authMiddleware, authorize(['admin', 'root']), async (req, 
     };
 
     backup.stats = stats;
+
+    if (req.query.format === 'csv') {
+      let csv = 'Module,Record Count\n';
+      Object.keys(stats).forEach(key => {
+        csv += `${key.toUpperCase()},${stats[key]}\n`;
+      });
+      csv += '\n--- PRODUCT DATA ---\n';
+      csv += 'PRODUCT NAME,SKU,CATEGORY,STOCK,UNIT PRICE\n';
+      backup.data.products.forEach(p => {
+        csv += `"${p.productName}","${p.sku}","${p.category?.catName || 'N/A'}",${p.initialQty},${p.basePrice || 0}\n`;
+      });
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=inventpro_backup_${new Date().toISOString().split('T')[0]}.csv`);
+      return res.send(csv);
+    }
 
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename=inventpro_backup_${new Date().toISOString().split('T')[0]}.json`);

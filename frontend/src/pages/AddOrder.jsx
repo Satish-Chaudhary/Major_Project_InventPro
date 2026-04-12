@@ -354,7 +354,7 @@ const AddOrder = ({ isOpen = true }) => {
                                                     <td className="px-6 py-5 text-center">
                                                         <button
                                                             onClick={() => removeItem(item.id)}
-                                                            className="p-2 text-slate-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                                                            className="p-2 text-slate-600 hover:text-red-400 transition-colors"
                                                         >
                                                             <Trash2 className="w-4 h-4" />
                                                         </button>

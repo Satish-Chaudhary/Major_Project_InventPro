@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Package, AlertTriangle, XCircle, TrendingUp } from 'lucide-react';
 import {
@@ -11,6 +11,8 @@ import { useAppSelector } from '../redux/hooks';
 import { selectUser } from '../redux/slices/authSlice';
 import { useGetSummaryReportQuery } from '../redux/slices/reportSlice';
 import { useGetProductsQuery } from '../redux/slices/productSlice';
+import { useGetOrdersQuery } from '../redux/slices/orderSlice';
+import { useGetCategoriesQuery } from '../redux/slices/categorySlice';
 import { getStatusBadge } from '../utils/statusBadges';
 import { useGetActivitiesQuery } from '../redux/slices/activitySlice';
 import { useNavigate } from 'react-router-dom';
@@ -18,10 +20,16 @@ import { useNavigate } from 'react-router-dom';
 const Dashboard = () => {
     const navigate = useNavigate();
     const user = useAppSelector(selectUser);
+    const [timeframe, setTimeframe] = useState('month'); // 'day', 'month', 'year'
     const { data: summaryResponse, isLoading: summaryLoading } = useGetSummaryReportQuery();
-    const { data: productsResponse, isLoading: productsLoading } = useGetProductsQuery();
+    const { data: productsResponse, isLoading: productsLoading } = useGetProductsQuery({ limit: 1000 });
     const { data: activityData } = useGetActivitiesQuery({ limit: 4 });
+    const { data: ordersResponse } = useGetOrdersQuery({ limit: 5000 });
+    const { data: categoriesResponse } = useGetCategoriesQuery();
+
     const auditLogs = activityData?.activities || [];
+    const orders = Array.isArray(ordersResponse?.orders) ? ordersResponse.orders : [];
+    const categories = categoriesResponse?.categories || [];
 
     const summaryData = summaryResponse?.data;
     const inventory = productsResponse?.products || [];
@@ -41,21 +49,83 @@ const Dashboard = () => {
         { label: 'Total Revenue', value: `$${(summaryData?.totalSales || 0).toLocaleString()}`, icon: TrendingUp, trend: 'Net Balance', color: 'text-emerald-400', path: '/invoices' },
     ];
 
-    const stockTrendData = [
-        { month: 'Jan', stock: (summaryData?.totalPurchases || 240) * 0.1, sold: (summaryData?.totalSales || 120) * 0.1 },
-        { month: 'Feb', stock: (summaryData?.totalPurchases || 280) * 0.2, sold: (summaryData?.totalSales || 145) * 0.2 },
-        { month: 'Mar', stock: (summaryData?.totalPurchases || 220) * 0.4, sold: (summaryData?.totalSales || 180) * 0.3 },
-        { month: 'Apr', stock: (summaryData?.totalPurchases || 310) * 0.3, sold: (summaryData?.totalSales || 160) * 0.5 },
-        { month: 'May', stock: (summaryData?.totalPurchases || 290) * 0.6, sold: (summaryData?.totalSales || 195) * 0.7 },
-        { month: 'Jun', stock: (summaryData?.totalPurchases || 350) * 0.8, sold: (summaryData?.totalSales || 210) * 0.9 },
-    ];
+    // Real-time Movement Trends Calculation
+    const stockTrendData = [];
+    const now = new Date();
+    const COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
 
-    const categoryData = [
-        { name: 'Electronics', value: summaryData?.stockStatus?.ok || 45, color: '#8b5cf6' },
-        { name: 'Infrastructure', value: summaryData?.stockStatus?.low || 25, color: '#06b6d4' },
-        { name: 'Logistics', value: summaryData?.stockStatus?.out || 20, color: '#ef4444' },
-        { name: 'Other', value: 10, color: '#f59e0b' },
-    ];
+    if (timeframe === 'day') {
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+            const label = d.toLocaleDateString('default', { month: 'short', day: 'numeric' });
+            
+            const dayOrders = orders.filter(o => {
+                const od = new Date(o.createdAt);
+                return od.getDate() === d.getDate() && od.getMonth() === d.getMonth() && od.getFullYear() === d.getFullYear();
+            });
+
+            stockTrendData.push({
+                label,
+                stock: dayOrders.filter(o => o.type === 'inward').reduce((sum, o) => sum + (Number(o.value) || 0), 0),
+                sold: dayOrders.filter(o => o.type === 'outward').reduce((sum, o) => sum + (Number(o.value) || 0), 0)
+            });
+        }
+    } else if (timeframe === 'year') {
+        for (let i = 4; i >= 0; i--) {
+            const year = now.getFullYear() - i;
+            const label = year.toString();
+            
+            const yearOrders = orders.filter(o => new Date(o.createdAt).getFullYear() === year);
+
+            stockTrendData.push({
+                label,
+                stock: yearOrders.filter(o => o.type === 'inward').reduce((sum, o) => sum + (Number(o.value) || 0), 0),
+                sold: yearOrders.filter(o => o.type === 'outward').reduce((sum, o) => sum + (Number(o.value) || 0), 0)
+            });
+        }
+    } else {
+        // Month view (default)
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const label = d.toLocaleString('default', { month: 'short' });
+            
+            const monthOrders = orders.filter(o => {
+                const od = new Date(o.createdAt);
+                return od.getMonth() === d.getMonth() && od.getFullYear() === d.getFullYear();
+            });
+
+            stockTrendData.push({
+                label,
+                stock: monthOrders.filter(o => o.type === 'inward').reduce((sum, o) => sum + (Number(o.value) || 0), 0),
+                sold: monthOrders.filter(o => o.type === 'outward').reduce((sum, o) => sum + (Number(o.value) || 0), 0)
+            });
+        }
+    }
+
+    // Real-time Stock Distribution Calculation
+    const categoryData = categories.slice(0, 5).map((cat, idx) => {
+        const count = inventory.filter(p => 
+            Array.isArray(p.category) 
+                ? p.category.some(c => c._id === cat._id || c === cat._id)
+                : p.category === cat._id || p.category?._id === cat._id
+        ).length;
+        return {
+            name: cat.catName,
+            value: count,
+            color: COLORS[idx % COLORS.length]
+        };
+    }).filter(d => d.value > 0);
+
+    // Fallback if no categories or products
+    if (categoryData.length === 0) {
+        categoryData.push({ name: 'General', value: inventory.length, color: '#8b5cf6' });
+    }
+
+    const totalStockCount = categoryData.reduce((sum, d) => sum + d.value, 0);
+    const topCategory = categoryData.sort((a, b) => b.value - a.value)[0];
+    const topCategoryPercentage = totalStockCount > 0 
+        ? Math.round((topCategory.value / totalStockCount) * 100) 
+        : 0;
 
     const recentActivity = (auditLogs || []).slice(0, 4).map(log => ({
         id: log._id,
@@ -99,8 +169,26 @@ const Dashboard = () => {
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 bg-slate-900/40 border border-slate-800/60 rounded-2xl p-6">
-                    <h3 className="text-white font-bold mb-6 text-lg tracking-tight">Movement Trends</h3>
-                    <div className="h-[350px]">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                        <h3 className="text-white font-bold text-lg tracking-tight">Movement Trends</h3>
+                        <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
+                            {['day', 'month', 'year'].map((pt) => (
+                                <button
+                                    key={pt}
+                                    onClick={() => setTimeframe(pt)}
+                                    className={clsx(
+                                        "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                                        timeframe === pt 
+                                            ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20" 
+                                            : "text-slate-500 hover:text-slate-300"
+                                    )}
+                                >
+                                    {pt}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="h-[330px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={stockTrendData}>
                                 <defs>
@@ -110,8 +198,8 @@ const Dashboard = () => {
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                                <XAxis dataKey="month" stroke="#64748b" axisLine={false} tickLine={false} dy={10} fontSize={12} />
-                                <YAxis stroke="#64748b" axisLine={false} tickLine={false} fontSize={12} />
+                                <XAxis dataKey="label" stroke="#64748b" axisLine={false} tickLine={false} dy={10} fontSize={10} />
+                                <YAxis stroke="#64748b" axisLine={false} tickLine={false} fontSize={10} />
                                 <Tooltip
                                     contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5)' }}
                                 />
@@ -148,8 +236,8 @@ const Dashboard = () => {
                             </PieChart>
                         </ResponsiveContainer>
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-3xl font-bold text-white">45%</span>
-                            <span className="text-slate-400 text-xs">Electronics</span>
+                            <span className="text-3xl font-bold text-white">{topCategoryPercentage}%</span>
+                            <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{topCategory?.name || 'Stock'}</span>
                         </div>
                     </div>
                 </div>

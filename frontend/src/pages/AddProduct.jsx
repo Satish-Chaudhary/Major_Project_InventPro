@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, X, Upload, Info, Check } from 'lucide-react';
+import { Package, X, Info, Check } from 'lucide-react';
 
 import { serverUrl } from '../config/api';
 
@@ -39,16 +39,30 @@ const AddProduct = ({ isOpen: propIsOpen, editProduct: propEditProduct }) => {
         taxRate: '20',
         barcodeEAN: '',
         productImage: '',
-        imageFile: null, // To store the actual file object
         status: 'in stock'
     });
 
     useEffect(() => {
         if (editProduct) {
+            // Handle category - it could be an array of ObjectIds or category names
+            const productCategory = editProduct.category;
+            let categoryValue = 'Electronics';
+            
+            if (productCategory && productCategory.length > 0) {
+                // If it's an array of objects with catName, use the name
+                if (typeof productCategory[0] === 'object' && productCategory[0]?.catName) {
+                    categoryValue = productCategory[0].catName;
+                } 
+                // If it's an array of strings (ObjectIds), keep the first one
+                else if (typeof productCategory[0] === 'string') {
+                    categoryValue = productCategory[0];
+                }
+            }
+            
             setFormData({
                 name: editProduct.productName || '',
                 sku: editProduct.skuId || '',
-                category: editProduct.category || 'Electronics',
+                category: categoryValue,
                 brand: editProduct.brand || '',
                 description: editProduct.productDescription || '',
                 basePrice: editProduct.basePrice || '',
@@ -81,22 +95,16 @@ const AddProduct = ({ isOpen: propIsOpen, editProduct: propEditProduct }) => {
 
     if (!isOpen) return null;
 
-    const handleFileChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setFormData({
-                ...formData,
-                imageFile: file,
-                productImage: URL.createObjectURL(file) // For local preview
-            });
-        }
-    };
-
     const handleSave = async () => {
         const productFormData = new FormData();
         productFormData.append('productName', formData.name);
         productFormData.append('productDescription', formData.description);
-        productFormData.append('category', formData.category);
+        
+        // ✅ FIX: Send category as JSON stringified array
+        // The backend now handles both category names and ObjectIds
+        const categoryArray = formData.category ? [formData.category] : [];
+        productFormData.append('category', JSON.stringify(categoryArray));
+        
         productFormData.append('brand', formData.brand);
         productFormData.append('skuId', formData.sku);
         productFormData.append('barcodeEAN', formData.barcodeEAN || '');
@@ -106,13 +114,6 @@ const AddProduct = ({ isOpen: propIsOpen, editProduct: propEditProduct }) => {
         productFormData.append('costPrice', formData.costPrice || 0);
         productFormData.append('tax', formData.taxRate || 0);
         productFormData.append('status', formData.status);
-
-        if (formData.imageFile) {
-            productFormData.append('productImage', formData.imageFile);
-        } else if (formData.productImage && !formData.productImage.startsWith('blob:')) {
-            // Keep existing image if no new file is selected and it's not a preview blob
-            productFormData.append('productImage', formData.productImage);
-        }
 
         try {
             let result;
@@ -283,36 +284,6 @@ const AddProduct = ({ isOpen: propIsOpen, editProduct: propEditProduct }) => {
 
                         {/* Right Column - Side Panels */}
                         <div className="space-y-6">
-                            <section className="bg-slate-900/30 border border-slate-800/50 rounded-2xl p-6">
-                                <h3 className="text-md font-bold text-white mb-4 tracking-tight">Product Media</h3>
-                                <div className="space-y-4">
-                                    <label className="border-2 border-dashed border-slate-800 bg-slate-950/50 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:border-purple-500/50 hover:bg-purple-500/5 transition-all group overflow-hidden relative min-h-[160px]">
-                                        <input
-                                            type="file"
-                                            className="hidden"
-                                            accept="image/*"
-                                            onChange={handleFileChange}
-                                        />
-                                        {formData.productImage ? (
-                                            <div className="relative w-full h-full flex items-center justify-center">
-                                                <img src={formData.productImage} alt="Product" className="w-full h-full object-contain max-h-[140px]" />
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <p className="text-white text-xs font-bold">Change Image</p>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <>
-                                                <div className="w-12 h-12 rounded-full bg-slate-800 group-hover:bg-purple-500/20 flex items-center justify-center mb-3 transition-colors">
-                                                    <Upload className="w-6 h-6 text-slate-400 group-hover:text-purple-400" />
-                                                </div>
-                                                <p className="text-white text-sm font-semibold">Click to upload from system</p>
-                                                <p className="text-slate-500 text-[10px] mt-1">SVG, PNG, JPG (max. 5MB)</p>
-                                            </>
-                                        )}
-                                    </label>
-                                </div>
-                            </section>
-
                             <section className="bg-slate-900/30 border border-slate-800/50 rounded-2xl p-6 space-y-6">
                                 <h3 className="text-md font-bold text-white tracking-tight">Pricing</h3>
                                 <div className="space-y-4">

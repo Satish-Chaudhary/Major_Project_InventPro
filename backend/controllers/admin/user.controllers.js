@@ -6,26 +6,42 @@ import bcrypt from 'bcryptjs';
 // @desc    Get all users with filtering
 export const getUsers = async (req, res) => {
     try {
-        const { search, role, status } = req.query;
+        const { search, role, status, page = 1, limit = 10 } = req.query;
         let query = {};
         
         if (search) {
             query.$or = [
                 { fullName: { $regex: search, $options: 'i' } },
-                { email: { $regex: search, $options: 'i' } }
+                { email: { $regex: search, $options: 'i' } },
+                { department: { $regex: search, $options: 'i' } }
             ];
         }
         
         if (role && role !== 'All Roles') {
-            query.role = role.toLowerCase();
+            query.role = { $regex: new RegExp(`^${role}$`, 'i') };
         }
         
         if (status && status !== 'All Status') {
             query.status = status.toLowerCase();
         }
 
-        const users = await User.find(query).select('-password -confirmPassword').sort({ createdAt: -1 });
-        return res.status(200).json({ success: true, users });
+        const total = await User.countDocuments(query);
+        const users = await User.find(query)
+            .select('-password -confirmPassword')
+            .sort({ createdAt: -1 })
+            .skip((Number(page) - 1) * Number(limit))
+            .limit(Number(limit));
+
+        return res.status(200).json({ 
+            success: true, 
+            users,
+            pagination: {
+                total,
+                page: Number(page),
+                limit: Number(limit),
+                pages: Math.ceil(total / limit)
+            }
+        });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
     }
@@ -34,7 +50,7 @@ export const getUsers = async (req, res) => {
 // @desc    Admin add user
 export const adminAddUser = async (req, res) => {
     try {
-        const { fullName, email, phone, password, confirmPassword, role, status } = req.body;
+        const { fullName, email, phone, password, confirmPassword, role, department, status } = req.body;
 
         const existingUser = await User.findOne({ email });
         if (existingUser) return res.status(400).json({ success: false, message: "Email already exists" });
@@ -51,6 +67,7 @@ export const adminAddUser = async (req, res) => {
             password: hashedPassword,
             confirmPassword: hashedPassword,
             role: role || 'staff',
+            department: department || 'General',
             status: status || 'active'
         });
 
@@ -79,6 +96,8 @@ export const adminUpdateUser = async (req, res) => {
             email,
             phone,
             role,
+            department,
+            profilePic: req.body.profilePic,
             status
         }, { new: true }).select('-password -confirmPassword');
 

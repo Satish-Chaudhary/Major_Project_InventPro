@@ -1,10 +1,12 @@
 import { Package } from 'lucide-react';
 
-const InventProLogo = ({ view }) => {
+const InventProLogo = ({ view, isAdmin }) => {
     const isLogin = view === 'login';
     const title = isLogin ? 'InventPro' : view;
     const description = isLogin
-        ? 'Enter your credentials to access the admin portal.'
+        ? isAdmin 
+            ? 'Enter your credentials to access the admin portal.'
+            : 'Enter your credentials to access the staff portal.'
         : view === 'request access'
             ? 'Nexus Inventory is currently invite-only. Fill out the form below.'
             : 'Securely update your account credentials.';

@@ -49,7 +49,19 @@ const AddCustomer = () => {
 
     React.useEffect(() => {
         if (customerData?.customer) {
-            setFormData(customerData.customer);
+            const customer = customerData.customer;
+            setFormData(prev => ({
+                ...prev,
+                ...customer,
+                billingAddress: {
+                    ...prev.billingAddress,
+                    ...(customer.billingAddress || {})
+                },
+                shippingAddress: {
+                    ...prev.shippingAddress,
+                    ...(customer.shippingAddress || {})
+                }
+            }));
         }
     }, [customerData]);
 
@@ -270,20 +282,20 @@ const AddCustomer = () => {
                             </div>
                             <div className="space-y-4">
                                 <input
-                                    value={formData.billingAddress.street}
+                                    value={formData.billingAddress?.street || ''}
                                     onChange={(e) => setFormData({ ...formData, billingAddress: { ...formData.billingAddress, street: e.target.value } })}
                                     className="w-full bg-slate-950/60 border border-slate-800 p-4 rounded-xl text-sm text-white font-bold focus:border-cyan-500/50 outline-none"
                                     placeholder="Street / Unit"
                                 />
                                 <div className="grid grid-cols-2 gap-4">
                                     <input
-                                        value={formData.billingAddress.city}
+                                        value={formData.billingAddress?.city || ''}
                                         onChange={(e) => setFormData({ ...formData, billingAddress: { ...formData.billingAddress, city: e.target.value } })}
                                         className="bg-slate-950/60 border border-slate-800 p-4 rounded-xl text-sm text-white font-bold outline-none"
                                         placeholder="City"
                                     />
                                     <input
-                                        value={formData.billingAddress.postalCode}
+                                        value={formData.billingAddress?.postalCode || ''}
                                         onChange={(e) => setFormData({ ...formData, billingAddress: { ...formData.billingAddress, postalCode: e.target.value } })}
                                         className="bg-slate-950/60 border border-slate-800 p-4 rounded-xl text-sm text-white font-bold outline-none"
                                         placeholder="Post-Code"
@@ -291,7 +303,7 @@ const AddCustomer = () => {
                                 </div>
                             </div>
                         </div>
-
+ 
                         {/* Shipping */}
                         <div className="space-y-6 pt-6 border-t border-slate-800/50">
                             <div className="flex items-center gap-3">
@@ -300,20 +312,20 @@ const AddCustomer = () => {
                             </div>
                             <div className="space-y-4">
                                 <input
-                                    value={formData.shippingAddress.street}
+                                    value={formData.shippingAddress?.street || ''}
                                     onChange={(e) => setFormData({ ...formData, shippingAddress: { ...formData.shippingAddress, street: e.target.value } })}
                                     className="w-full bg-slate-950/60 border border-slate-800 p-4 rounded-xl text-sm text-white font-bold focus:border-emerald-500/50 outline-none"
                                     placeholder="Delivery Street"
                                 />
                                 <div className="grid grid-cols-2 gap-4">
                                     <input
-                                        value={formData.shippingAddress.city}
+                                        value={formData.shippingAddress?.city || ''}
                                         onChange={(e) => setFormData({ ...formData, shippingAddress: { ...formData.shippingAddress, city: e.target.value } })}
                                         className="bg-slate-950/60 border border-slate-800 p-4 rounded-xl text-sm text-white font-bold outline-none"
                                         placeholder="City"
                                     />
                                     <input
-                                        value={formData.shippingAddress.postalCode}
+                                        value={formData.shippingAddress?.postalCode || ''}
                                         onChange={(e) => setFormData({ ...formData, shippingAddress: { ...formData.shippingAddress, postalCode: e.target.value } })}
                                         className="bg-slate-950/60 border border-slate-800 p-4 rounded-xl text-sm text-white font-bold outline-none"
                                         placeholder="Zip-Track"

@@ -46,8 +46,6 @@ const AdminRoles = lazy(() => import('./pages/AdminRoles'));
 const AddRole = lazy(() => import('./pages/AddRole'));
 const Customers = lazy(() => import('./pages/Customers'));
 const AddCustomer = lazy(() => import('./pages/AddCustomer'));
-const Cart = lazy(() => import('./pages/Cart'));
-const Checkout = lazy(() => import('./pages/Checkout'));
 const Invoices = lazy(() => import('./pages/Invoices'));
 const SalesOrders = lazy(() => import('./pages/SalesOrders'));
 const SalesOrderDetails = lazy(() => import('./pages/SalesOrderDetails'));
@@ -59,6 +57,7 @@ const VendorPerformance = lazy(() => import('./pages/VendorPerformance'));
 const ProfitLoss = lazy(() => import('./pages/ProfitLoss'));
 const NotificationSettings = lazy(() => import('./pages/NotificationSettings'));
 const BackupExport = lazy(() => import('./pages/BackupExport'));
+const CustomerDetails = lazy(() => import('./pages/CustomerDetails'));
 
 const LoadingFallback = () => (
   <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center">
@@ -121,9 +120,6 @@ const App = () => {
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path='/dashboard' element={<Dashboard />} />
             <Route path='/inventory' element={<ProductsList />} />
-            <Route path='/cart' element={<Cart />} />
-            <Route path='/checkout' element={<Checkout />} />
-
             <Route path='/categories' element={
               <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.WAREHOUSE]}>
                 <Categories />
@@ -321,6 +317,12 @@ const App = () => {
             <Route path='/backup-export' element={
               <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT]}>
                 <BackupExport />
+              </ProtectedRoute>
+            } />
+
+            <Route path='/customer/:id' element={
+              <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.SALES_STAFF, ROLES.ACCOUNTANT]}>
+                <CustomerDetails />
               </ProtectedRoute>
             } />
           </Route>

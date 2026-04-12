@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 import { DollarSign, TrendingUp, TrendingDown, Percent, Calculator, ArrowUpRight, ArrowDownRight } from 'lucide-react';
@@ -8,6 +8,7 @@ import { useGetPurchaseOrdersQuery } from '../redux/slices/purchaseOrderSlice';
 import { exportToCSV } from '../utils/exportUtils';
 
 const ProfitLoss = () => {
+  const [timeframe, setTimeframe] = useState('month'); // 'day', 'month', 'year'
   const { data: productsData } = useGetProductsQuery({ limit: 1000 });
   const { data: salesOrdersData } = useGetSalesOrdersQuery({ limit: 1000 });
   const { data: purchaseOrdersData } = useGetPurchaseOrdersQuery({ limit: 1000 });
@@ -33,26 +34,64 @@ const ProfitLoss = () => {
   const grossMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
   const potentialProfit = productRetailValue - productCostValue;
 
-  const monthlyData = [];
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-  months.forEach(month => {
-    const monthSales = salesOrders.filter(o =>
-      new Date(o.createdAt).toLocaleString('default', { month: 'short' }) === month
-    );
-    const monthPurchases = purchaseOrders.filter(po =>
-      new Date(po.createdAt).toLocaleString('default', { month: 'short' }) === month
-    );
+  const trendData = [];
+  const now = new Date();
+  
+  if (timeframe === 'day') {
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+        const label = d.toLocaleDateString('default', { month: 'short', day: 'numeric' });
+        
+        const daySales = salesOrders.filter(o => {
+            const od = new Date(o.createdAt);
+            return od.getDate() === d.getDate() && od.getMonth() === d.getMonth() && od.getFullYear() === d.getFullYear();
+        });
 
-    const revenue = monthSales.reduce((sum, o) => sum + (o.total || 0), 0);
-    const cost = monthPurchases.reduce((sum, po) => sum + (po.total || 0), 0);
+        const dayPurchases = purchaseOrders.filter(po => {
+            const pd = new Date(po.createdAt);
+            return pd.getDate() === d.getDate() && pd.getMonth() === d.getMonth() && pd.getFullYear() === d.getFullYear();
+        });
 
-    monthlyData.push({
-      month,
-      revenue,
-      cost,
-      profit: revenue - cost
-    });
-  });
+        const revenue = daySales.reduce((sum, o) => sum + (o.total || 0), 0);
+        const cost = dayPurchases.reduce((sum, po) => sum + (po.totalAmount || 0), 0);
+
+        trendData.push({ label, revenue, cost, profit: revenue - cost });
+    }
+  } else if (timeframe === 'year') {
+    for (let i = 4; i >= 0; i--) {
+        const year = now.getFullYear() - i;
+        const label = year.toString();
+        
+        const yearSales = salesOrders.filter(o => new Date(o.createdAt).getFullYear() === year);
+        const yearPurchases = purchaseOrders.filter(po => new Date(po.createdAt).getFullYear() === year);
+
+        const revenue = yearSales.reduce((sum, o) => sum + (o.total || 0), 0);
+        const cost = yearPurchases.reduce((sum, po) => sum + (po.totalAmount || 0), 0);
+
+        trendData.push({ label, revenue, cost, profit: revenue - cost });
+    }
+  } else {
+    // Month view (default)
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const label = d.toLocaleString('default', { month: 'short' });
+
+      const monthSales = salesOrders.filter(o => {
+        const od = new Date(o.createdAt);
+        return od.toLocaleString('default', { month: 'short' }) === label && od.getFullYear() === d.getFullYear();
+      });
+
+      const monthPurchases = purchaseOrders.filter(po => {
+        const pd = new Date(po.createdAt);
+        return pd.toLocaleString('default', { month: 'short' }) === label && pd.getFullYear() === d.getFullYear();
+      });
+
+      const revenue = monthSales.reduce((sum, o) => sum + (o.total || 0), 0);
+      const cost = monthPurchases.reduce((sum, po) => sum + (po.totalAmount || 0), 0);
+
+      trendData.push({ label, revenue, cost, profit: revenue - cost });
+    }
+  }
 
   const categoryProfit = products.reduce((acc, p) => {
     const catName = p.category?.catName || 'Uncategorized';
@@ -153,16 +192,33 @@ const ProfitLoss = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Profit Trend */}
         <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-white mb-4">Monthly Profit Trend</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-white">Profit Trend</h3>
+            <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
+                {['day', 'month', 'year'].map((pt) => (
+                    <button
+                        key={pt}
+                        onClick={() => setTimeframe(pt)}
+                        className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                            timeframe === pt 
+                                ? "bg-purple-600 text-white shadow-lg" 
+                                : "text-slate-500 hover:text-slate-300"
+                        }`}
+                    >
+                        {pt}
+                    </button>
+                ))}
+            </div>
+          </div>
           <ResponsiveContainer width="100%" height={250}>
-            <AreaChart data={monthlyData}>
+            <AreaChart data={trendData}>
               <defs>
                 <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
                   <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <XAxis dataKey="month" tick={{ fill: '#94a3b8', fontSize: 12 }} />
+              <XAxis dataKey="label" tick={{ fill: '#94a3b8', fontSize: 10 }} />
               <YAxis tickFormatter={(value) => `$${value.toLocaleString()}`} tick={{ fill: '#94a3b8', fontSize: 12 }} />
               <Tooltip
                 contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
@@ -177,8 +233,8 @@ const ProfitLoss = () => {
         <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-6">
           <h3 className="text-lg font-bold text-white mb-4">Revenue vs Cost</h3>
           <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={monthlyData}>
-              <XAxis dataKey="month" tick={{ fill: '#94a3b8', fontSize: 12 }} />
+            <BarChart data={trendData}>
+              <XAxis dataKey="label" tick={{ fill: '#94a3b8', fontSize: 10 }} />
               <YAxis tickFormatter={(value) => `$${value.toLocaleString()}`} tick={{ fill: '#94a3b8', fontSize: 12 }} />
               <Tooltip
                 contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}

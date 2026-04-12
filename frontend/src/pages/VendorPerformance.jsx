@@ -15,8 +15,8 @@ const VendorPerformance = () => {
   const { data: productsData } = useGetProductsQuery({ limit: 1000 });
 
   const suppliers = suppliersData?.suppliers || [];
-  const purchaseOrders = Array.isArray(purchaseOrdersData?.pos) ? purchaseOrdersData.pos : 
-                         Array.isArray(purchaseOrdersData) ? purchaseOrdersData : [];
+  const purchaseOrders = Array.isArray(purchaseOrdersData?.pos) ? purchaseOrdersData.pos :
+    Array.isArray(purchaseOrdersData) ? purchaseOrdersData : [];
   const products = productsData?.products || [];
 
   const activeSuppliers = suppliers.filter(s => s.status === 'Active').length;
@@ -24,20 +24,28 @@ const VendorPerformance = () => {
   const avgSupplierValue = suppliers.length > 0 ? totalPurchaseValue / suppliers.length : 0;
 
   const supplierPerformance = suppliers.map(supplier => {
-    const supplierPOs = purchaseOrders.filter(po => po.supplier === supplier._id || po.supplier?.company === supplier.company);
+    const supplierPOs = purchaseOrders.filter(po =>
+      po.supplier?._id === supplier._id || po.supplier === supplier._id
+    );
     const totalOrders = supplierPOs.length;
-    const totalValue = supplierPOs.reduce((sum, po) => sum + (po.total || 0), 0);
-    const onTimeDeliveries = Math.floor(Math.random() * 30) + 70; // Placeholder calculation
+    const totalValue = supplierPOs.reduce((sum, po) => sum + (po.totalAmount || 0), 0);
+
+    // Real On-Time Calculation
+    const completedPOs = supplierPOs.filter(po => po.status === 'received' && po.receivedDate && po.expectedDate);
+    const onTimeCount = completedPOs.filter(po => new Date(po.receivedDate) <= new Date(po.expectedDate)).length;
+    const onTimeDeliveries = completedPOs.length > 0
+      ? Math.round((onTimeCount / completedPOs.length) * 100)
+      : 100; // Default to 100 if no history yet
 
     return {
       name: supplier.company.length > 15 ? supplier.company.slice(0, 15) + '...' : supplier.company,
       fullName: supplier.company,
       totalOrders,
       totalValue,
-      reliability: supplier.reliability || 85,
+      reliability: supplier.reliability || onTimeDeliveries,
       onTime: onTimeDeliveries
     };
-  }).filter(s => s.totalValue > 0);
+  }).filter(s => s.totalOrders > 0);
 
   const topVendors = [...supplierPerformance].sort((a, b) => b.totalValue - a.totalValue).slice(0, 5);
 
@@ -199,8 +207,8 @@ const VendorPerformance = () => {
                   <td className="px-4 py-3 text-sm">{supplier.email}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${supplier.status === 'Active'
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
                       }`}>
                       {supplier.status}
                     </span>

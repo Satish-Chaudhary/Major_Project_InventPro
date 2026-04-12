@@ -25,7 +25,7 @@ const AdminProfileButton = () => {
                     </div>
                     <div className="overflow-hidden">
                         <p className="text-white font-black text-xs truncate uppercase tracking-tighter">{user?.fullName || 'User'}</p>
-                        <p className="text-slate-500 text-[10px] truncate font-bold italic">{user?.email || 'user@example.com'}</p>
+                        <p className="text-slate-500 text-[10px] truncate font-bold italic capitalize">{user?.role || 'Staff'}</p>
                     </div>
                 </div>
             </Link>

@@ -65,7 +65,7 @@ const Settings = () => {
     const administrationModules = [
         { id: 'admin-dashboard', icon: ShieldCheck, label: 'Admin Panel', path: '/admin-dashboard', roles: [ROLES.ADMIN, ROLES.ROOT] },
         { id: 'categories', icon: Database, label: 'Item Categories', path: '/categories', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER] },
-        { id: 'orders', icon: ArrowUpDown, label: 'Stock Movements', path: '/orders', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.SALES_STAFF, ROLES.ACCOUNTANT] },
+        { id: 'orders', icon: ArrowUpDown, label: 'Orders', path: '/orders', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.SALES_STAFF, ROLES.ACCOUNTANT] },
         { id: 'suppliers', icon: Users, label: 'Vendor Registry', path: '/suppliers', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT] },
         { id: 'purchase-orders', icon: Database, label: 'Purchase Orders', path: '/purchase-orders', roles: [ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.ACCOUNTANT, ROLES.WAREHOUSE] },
         { id: 'approvals', icon: ShieldCheck, label: 'Staff Requests', path: '/approvals', roles: [ROLES.ADMIN, ROLES.ROOT] },

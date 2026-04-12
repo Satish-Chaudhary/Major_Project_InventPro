@@ -73,15 +73,7 @@ const Categories = () => {
 
                         <div className="flex justify-between items-start mb-6 relative z-10">
                             <div className="w-12 h-12 rounded-xl bg-slate-800/50 flex items-center justify-center shadow-lg shadow-black/20 group-hover:scale-110 transition-transform overflow-hidden">
-                                {cat.thumbnail ? (
-                                    <img
-                                        src={cat.thumbnail.startsWith('http') ? cat.thumbnail : `${serverUrl}/${cat.thumbnail.replace('\\', '/')}`}
-                                        alt={cat.catName}
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : (
-                                    <Package className="w-6 h-6 text-slate-500 group-hover:text-purple-400" />
-                                )}
+                                <Package className="w-6 h-6 text-slate-500 group-hover:text-purple-400" />
                             </div>
                             <div className="flex gap-2">
                                 <button

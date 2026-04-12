@@ -86,8 +86,8 @@ export const getAllOrders = async (req, res) => {
     try {
         const { page = 1, limit = 10, search = '', type = '', status = '' } = req.query;
 
-        // Cap limit (V13 performance guard)
-        const safeLimit = Math.min(Number(limit), 100);
+        // Cap limit (Internal/Report-level guard increased)
+        const safeLimit = Math.min(Number(limit), 5000);
 
         const filter = {};
         if (search) {

@@ -9,6 +9,7 @@ import { io } from "../socket/socket.js";
 import ActivityLog from '../models/activityLog.model.js';
 import mongoose from 'mongoose';
 import Role from '../models/role.model.js';
+import Setting from '../models/setting.model.js';
 
 // Root User Registration (Only ONE root allowed)
 export const registerRoot = async (req, res) => {
@@ -656,10 +657,13 @@ export const getSecuritySummary = async (req, res) => {
             action: { $regex: /failed/i } 
         }).populate('userId', 'fullName email role').sort({ createdAt: -1 }).limit(10);
         
+        const settings = await Setting.findOne() || {};
+        
         return res.status(200).json({
             success: true,
             activeSessions,
-            recentFailed
+            recentFailed,
+            settings
         });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });

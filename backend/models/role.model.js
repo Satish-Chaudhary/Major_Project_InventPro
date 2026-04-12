@@ -9,15 +9,23 @@ const RoleSchema = new mongoose.Schema({
     permissions: [{
         type: String,
         enum: [
-            'create_product', 
-            'edit_product', 
-            'delete_product', 
-            'update_stock', 
-            'manage_users', 
-            'view_reports',
-            'manage_roles',
-            'manage_suppliers',
-            'manage_orders'
+            'manage_users',
+            'approve_requests',
+            'full_audit',
+            'system_settings',
+            'product_crud',
+            'category_crud',
+            'vendor_registry',
+            'system_analytics',
+            'advanced_reports',
+            'cost_auditing',
+            'order_history',
+            'stock_updates',
+            'procurement_tracking',
+            'inventory_read',
+            'create_sales_orders',
+            'sales_metrics',
+            'product_discovery'
         ]
     }],
     description: {

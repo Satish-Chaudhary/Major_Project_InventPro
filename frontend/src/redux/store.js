@@ -19,12 +19,11 @@ import { salesOrderApi } from './slices/salesOrderSlice'
 import { invoiceApi } from './slices/invoiceSlice'
 import { paymentApi } from './slices/paymentSlice'
 import { purchaseOrderApi } from './slices/purchaseOrderSlice'
-import cartReducer from './slices/cartSlice'
 
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['auth', 'ui', 'cart'], // Only persist auth, UI, and cart
+  whitelist: ['auth', 'ui'], // Only persist auth and UI
 }
 
 const rootReducer = combineReducers({
@@ -48,7 +47,6 @@ const rootReducer = combineReducers({
   [invoiceApi.reducerPath]: invoiceApi.reducer,
   [paymentApi.reducerPath]: paymentApi.reducer,
   [purchaseOrderApi.reducerPath]: purchaseOrderApi.reducer,
-  cart: cartReducer,
 })
 
 const persistedReducer = persistReducer(persistConfig, rootReducer)

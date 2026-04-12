@@ -66,19 +66,42 @@ export const createSalesOrder = async (req, res) => {
 // @route   GET /api/sales-orders/all
 export const getSalesOrders = async (req, res) => {
     try {
-        const { status, page = 1, limit = 10 } = req.query;
+        const { status, paymentStatus, search, page = 1, limit = 10 } = req.query;
         const filter = {};
-        if (status) filter.orderStatus = status;
 
-        const skip = (page - 1) * limit;
+        if (status) filter.orderStatus = status;
+        if (paymentStatus) filter.paymentStatus = paymentStatus;
+
+        const skip = (Number(page) - 1) * Number(limit);
         const total = await SalesOrder.countDocuments(filter);
-        const orders = await SalesOrder.find(filter)
+
+        // Fetch orders (then apply in-memory search for customer name if needed)
+        let orders = await SalesOrder.find(filter)
             .populate('customer', 'name email companyName')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(parseInt(limit));
 
-        res.status(200).json({ success: true, orders, total, page: parseInt(page), pages: Math.ceil(total / limit) });
+        // Apply search filter (order number or customer name)
+        if (search) {
+            const q = search.toLowerCase();
+            orders = orders.filter(o =>
+                o.orderNumber?.toLowerCase().includes(q) ||
+                o.customer?.name?.toLowerCase().includes(q) ||
+                o.customer?.email?.toLowerCase().includes(q)
+            );
+        }
+
+        res.status(200).json({
+            success: true,
+            orders,
+            pagination: {
+                total: search ? orders.length : total,
+                page: parseInt(page),
+                pages: Math.ceil(total / limit),
+                limit: parseInt(limit)
+            }
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -107,7 +130,8 @@ export const getSalesOrderById = async (req, res) => {
 // @route   PATCH /api/sales-orders/status/:id
 export const updateOrderStatus = async (req, res) => {
     try {
-        const { status, trackingNumber, carrier } = req.body;
+        const { status: statusField, orderStatus, trackingNumber, carrier } = req.body;
+        const status = orderStatus || statusField; // accept either field name
         const order = await SalesOrder.findById(req.params.id);
 
         if (!order) {

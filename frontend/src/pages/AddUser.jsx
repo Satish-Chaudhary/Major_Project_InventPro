@@ -7,20 +7,25 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
-import { useNavigate } from 'react-router-dom';
-import { 
-    useAddUserMutation, 
-    useGetRolesQuery, 
-    useGetDepartmentsQuery 
+import { useNavigate, useLocation } from 'react-router-dom';
+import {
+    useAddUserMutation,
+    useUpdateUserMutation,
+    useGetRolesQuery,
+    useGetDepartmentsQuery
 } from '../redux/slices/adminSlice';
 import { toast } from 'react-hot-toast';
 import { useEffect } from 'react';
 
 const AddUser = ({ isOpen = true }) => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [addUser] = useAddUserMutation();
+    const [updateUser] = useUpdateUserMutation();
     const { data: rolesData } = useGetRolesQuery();
     const { data: deptsData } = useGetDepartmentsQuery();
+
+    const editUser = location.state?.editUser;
 
     const allRoles = rolesData?.roles || [];
     const departments = deptsData?.departments || [];
@@ -38,18 +43,63 @@ const AddUser = ({ isOpen = true }) => {
     });
 
     useEffect(() => {
-        if (allRoles.length > 0 && !formData.role) {
-            setFormData(prev => ({ ...prev, role: allRoles[0].name }));
+        if (editUser) {
+            setFormData({
+                fullName: editUser.fullName || '',
+                email: editUser.email || '',
+                phone: editUser.phone || '',
+                password: '', // Optional during edit
+                confirmPassword: '',
+                role: editUser.role || '',
+                department: editUser.department || '',
+                profilePic: editUser.profilePic || '',
+                status: editUser.status || 'active'
+            });
         }
-    }, [allRoles, formData.role]);
+    }, [editUser]);
 
     useEffect(() => {
-        if (departments.length > 0 && !formData.department) {
+        if (!editUser && allRoles.length > 0 && !formData.role) {
+            setFormData(prev => ({ ...prev, role: allRoles[0].name }));
+        }
+    }, [allRoles, formData.role, editUser]);
+
+    useEffect(() => {
+        if (!editUser && departments.length > 0 && !formData.department) {
             setFormData(prev => ({ ...prev, department: departments[0].name }));
         }
-    }, [departments, formData.department]);
+    }, [departments, formData.department, editUser]);
 
     if (!isOpen) return null;
+
+    const handleSubmit = async () => {
+        if (!editUser && (!formData.password || formData.password !== formData.confirmPassword)) {
+            return toast.error("Passwords must match and be provided for new users");
+        }
+        
+        if (editUser && formData.password && formData.password !== formData.confirmPassword) {
+            return toast.error("Passwords do not match");
+        }
+
+        try {
+            if (editUser) {
+                // Remove password from payload if not provided
+                const payload = { ...formData };
+                if (!payload.password) {
+                    delete payload.password;
+                    delete payload.confirmPassword;
+                }
+                await updateUser({ id: editUser._id, ...payload }).unwrap();
+                toast.success('User updated successfully');
+            } else {
+                await addUser(formData).unwrap();
+                toast.success('User created successfully');
+            }
+            onClose();
+        } catch (err) {
+            toast.error(err.data?.message || `Failed to ${editUser ? 'update' : 'create'} user`);
+        }
+    };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -70,12 +120,9 @@ const AddUser = ({ isOpen = true }) => {
                 {/* Header */}
                 <div className="px-10 py-8 border-b border-slate-800 flex items-center justify-between bg-linear-to-r from-purple-500/5 to-cyan-500/5">
                     <div>
-                        {/* <div className="flex items-center gap-2 text-slate-500 text-[10px] font-bold uppercase tracking-widest leading-none mb-1">
-                            <span>User Management</span>
-                            <ChevronRight className="w-3 h-3" />
-                            <span className="text-slate-300">Add New User</span>
-                        </div> */}
-                        <h2 className="text-3xl font-bold text-white tracking-tight">Add New User</h2>
+                        <h2 className="text-3xl font-bold text-white tracking-tight">
+                            {editUser ? 'Edit User Profile' : 'Add New User'}
+                        </h2>
                     </div>
                     <div className="flex items-center gap-4">
                         <button
@@ -85,22 +132,11 @@ const AddUser = ({ isOpen = true }) => {
                             Cancel
                         </button>
                         <button
-                            onClick={async () => {
-                                if (formData.password !== formData.confirmPassword) {
-                                    return toast.error("Passwords do not match");
-                                }
-                                try {
-                                    await addUser(formData).unwrap();
-                                    toast.success('User created successfully');
-                                    onClose();
-                                } catch (err) {
-                                    toast.error(err.data?.message || 'Failed to create user');
-                                }
-                            }}
+                            onClick={handleSubmit}
                             className="px-8 py-3 rounded-2xl bg-linear-to-r from-purple-600 to-cyan-600 text-white font-black uppercase tracking-widest hover:brightness-110 shadow-lg shadow-purple-500/20 flex items-center gap-2 transition-all text-[10px]"
                         >
                             <Check className="w-4 h-4" />
-                            Create User
+                            {editUser ? 'Update Profile' : 'Create User'}
                         </button>
                     </div>
                 </div>
@@ -206,14 +242,38 @@ const AddUser = ({ isOpen = true }) => {
                         {/* Right Column - Controls & Media */}
                         <div className="lg:col-span-4 space-y-10">
 
-                            {/* Profile Picture */}
                             <section className="bg-slate-900/40 border border-slate-800/60 rounded-4xl p-10 space-y-8">
                                 <h3 className="text-xl font-bold text-white tracking-tight leading-none">Profile Picture</h3>
-                                <div className="group relative border-2 border-dashed border-slate-800 bg-slate-950/20 rounded-4xl p-12 flex flex-col items-center justify-center text-center cursor-pointer hover:border-purple-500/50 hover:bg-purple-500/5 transition-all">
-                                    <div className="w-16 h-16 rounded-full bg-slate-800 border-4 border-slate-900/50 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                                        <Camera className="w-8 h-8 text-slate-500" />
+                                <div 
+                                    onClick={() => document.getElementById('profilePicInput').click()}
+                                    className="group relative border-2 border-dashed border-slate-800 bg-slate-950/20 rounded-4xl p-12 flex flex-col items-center justify-center text-center cursor-pointer hover:border-purple-500/50 hover:bg-purple-500/5 transition-all"
+                                >
+                                    <input 
+                                        type="file" 
+                                        id="profilePicInput" 
+                                        className="hidden" 
+                                        accept="image/*"
+                                        onChange={(e) => {
+                                            const file = e.target.files[0];
+                                            if (file) {
+                                                const reader = new FileReader();
+                                                reader.onloadend = () => {
+                                                    setFormData({ ...formData, profilePic: reader.result });
+                                                };
+                                                reader.readAsDataURL(file);
+                                            }
+                                        }}
+                                    />
+                                    <div className="w-20 h-20 rounded-full bg-slate-800 border-4 border-slate-900/50 flex items-center justify-center mb-5 group-hover:scale-110 transition-all overflow-hidden">
+                                        {formData.profilePic ? (
+                                            <img src={formData.profilePic} alt="Profile Preview" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <Camera className="w-8 h-8 text-slate-500" />
+                                        )}
                                     </div>
-                                    <p className="text-white text-sm font-black uppercase tracking-widest">Upload Photo</p>
+                                    <p className="text-white text-sm font-black uppercase tracking-widest">
+                                        {formData.profilePic ? 'Change Photo' : 'Upload Photo'}
+                                    </p>
                                     <p className="text-slate-600 text-[10px] font-bold uppercase tracking-widest mt-3">JPG or PNG (max. 1MB)</p>
                                 </div>
                             </section>

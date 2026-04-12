@@ -96,7 +96,7 @@ const Login = () => {
                             <div className="bg-slate-900/40 backdrop-blur-2xl border border-slate-800/60 rounded-3xl px-10 py-16 shadow-3xl relative h-full flex flex-col justify-center">
 
                                 <div className="mb-8">
-                                    <InventProLogo view="login" />
+                                    <InventProLogo view="login" isAdmin={isFlipped} />
                                     <h2 className="text-center text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2">
                                         {isFlipped ? "🔐 Administrative Access" : "🏢 Staff Workstation"}
                                     </h2>

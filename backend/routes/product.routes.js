@@ -1,6 +1,6 @@
 import express from 'express';
 import { 
-    addProduct, getAllProducts, updateProduct, deleteProduct, 
+    addProduct, getAllProducts, updateProduct, deleteProduct, deleteMultipleProducts,
     getLowStockProducts, adjustStock, bulkImportProducts, exportProducts
 } from '../controllers/product.controllers.js';
 import { authMiddleware } from '../middleware/isAuth.middleware.js';
@@ -19,6 +19,7 @@ productRouter.post('/add', authMiddleware, authorize(['admin', 'root', 'manager'
 productRouter.post('/bulk-import', authMiddleware, authorize(['admin', 'root', 'manager']), bulkImportProducts);
 productRouter.patch('/adjust-stock/:id', authMiddleware, authorize(['admin', 'root', 'manager', 'warehouse staff']), adjustStock);
 productRouter.put('/update/:id', authMiddleware, authorize(['admin', 'root', 'manager']), upload.single('productImage'), updateProduct);
-productRouter.delete('/delete/:id', authMiddleware, authorize(['admin', 'root']), deleteProduct);
+productRouter.delete('/delete/:id', authMiddleware, authorize(['admin', 'root', 'manager']), deleteProduct);
+productRouter.post('/delete-multiple', authMiddleware, authorize(['admin', 'root', 'manager']), deleteMultipleProducts);
 
 export default productRouter;

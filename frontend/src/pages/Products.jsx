@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Download, Edit2, Trash2, Package, Check, RotateCcw, Settings, ShoppingCart, Upload } from 'lucide-react';
+import { Search, Plus, Download, Edit2, Trash2, Package, Check, RotateCcw } from 'lucide-react';
 import { clsx } from 'clsx';
 import { toast } from 'react-hot-toast'
 import { serverUrl } from '../config/api';
-import AdjustStockModal from './AdjustStockModal';
-import BulkImportModal from '../components/BulkImportModal';
 import { useDeleteWithConfirm } from '../hooks/useDeleteWithConfirm';
 import { exportToCSV } from '../utils/exportUtils';
 
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
-import { addToCart } from '../redux/slices/cartSlice';
 import {
     selectProductFilters,
     setFilters,
@@ -31,8 +28,6 @@ const ProductsList = () => {
     const userRole = user?.role?.toLowerCase();
     const confirmDelete = useDeleteWithConfirm();
 
-    const [showBulkImport, setShowBulkImport] = useState(false);
-
     const { data: productsData, isLoading, isFetching } = useGetProductsQuery(filters);
     const { data: categoriesData } = useGetCategoriesQuery();
     const [deleteProduct] = useDeleteProductMutation();
@@ -51,8 +46,6 @@ const ProductsList = () => {
     const canExport = ['admin', 'manager', 'accountant'].includes(userRole);
 
     const [selectedItems, setSelectedItems] = useState([]);
-    const [adjustProduct, setAdjustProduct] = useState(null);
-    const [showAdjustModal, setShowAdjustModal] = useState(false);
 
     const handlePageChange = (newPage) => {
         if (newPage < 1 || newPage > inventoryStats.pages) return;
@@ -119,17 +112,7 @@ const ProductsList = () => {
         }));
     };
 
-    const handleAddToCart = (product) => {
-        dispatch(addToCart({
-            productId: product._id,
-            productName: product.productName,
-            sku: product.skuId,
-            price: product.basePrice,
-            image: product.productImage,
-            quantity: 1
-        }));
-        toast.success(`${product.productName} added to checkout cart`);
-    };
+
 
     return (
         <motion.div
@@ -149,6 +132,28 @@ const ProductsList = () => {
                             <span className="text-purple-400 text-xs font-bold">{selectedItems.length} Selected</span>
                             <div className="w-px h-4 bg-purple-500/20" />
                             <button
+                                onClick={() => {
+                                    const selectedProducts = inventory.filter(item => selectedItems.includes(item._id));
+                                    const exportData = selectedProducts.map(i => ({
+                                        'Inventory ID': i.skuId || 'N/A',
+                                        'Product Name': i.productName,
+                                        'Category': Array.isArray(i.category) && i.category.length > 0
+                                            ? (typeof i.category[0] === 'object' ? i.category[0].catName : i.category[0])
+                                            : (typeof i.category === 'string' ? i.category : 'N/A'),
+                                        'Price': i.basePrice || 0,
+                                        'Cost': i.costPrice || 0,
+                                        'Current Stock': i.initialQty || 0,
+                                        'Status': i.status
+                                    }));
+                                    exportToCSV(exportData, `selected_inventory_${new Date().toISOString().split('T')[0]}`);
+                                }}
+                                className="text-purple-400 hover:text-purple-300 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                            >
+                                <Download className="w-3.5 h-3.5" />
+                                Export
+                            </button>
+                            <div className="w-px h-4 bg-purple-500/20" />
+                            <button
                                 onClick={handleBulkDelete}
                                 className="text-red-400 hover:text-red-300 text-xs font-bold flex items-center gap-1.5 transition-colors"
                             >
@@ -162,26 +167,19 @@ const ProductsList = () => {
                     {canExport && (
                         <>
                             <button
-                                onClick={() => setShowBulkImport(true)}
-                                disabled={!canAdd}
-                                className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 text-slate-300 hover:text-white rounded-xl border border-slate-700 transition-all font-bold text-xs uppercase tracking-widest disabled:opacity-50"
-                                title="Import products from CSV"
-                            >
-                                <Upload className="w-4 h-4" />
-                                Import
-                            </button>
-                            <button
                                 onClick={() => {
                                     const exportData = inventory.map(i => ({
-                                        ID: i.sku,
-                                        Name: i.productName,
-                                        Category: i.category?.catName || 'N/A',
-                                        Price: i.salePrice,
-                                        Cost: i.costPrice,
-                                        Stock: i.initialQty,
-                                        Status: i.status
+                                        'Inventory ID': i.skuId || 'N/A',
+                                        'Product Name': i.productName,
+                                        'Category': Array.isArray(i.category) && i.category.length > 0
+                                            ? (typeof i.category[0] === 'object' ? i.category[0].catName : i.category[0])
+                                            : (typeof i.category === 'string' ? i.category : 'N/A'),
+                                        'Price': i.basePrice || 0,
+                                        'Cost': i.costPrice || 0,
+                                        'Current Stock': i.initialQty || 0,
+                                        'Status': i.status
                                     }));
-                                    exportToCSV(exportData, `products_report_${new Date().toLocaleDateString()}`);
+                                    exportToCSV(exportData, `inventory_report_${new Date().toISOString().split('T')[0]}`);
                                 }}
                                 disabled={!canExport}
                                 className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 text-slate-300 hover:text-white rounded-xl border border-slate-700 transition-all font-bold text-xs uppercase tracking-widest disabled:opacity-50"
@@ -223,7 +221,7 @@ const ProductsList = () => {
                     >
                         <option value="All">All Categories</option>
                         {categories.map(cat => (
-                            <option key={cat._id} value={cat.name}>{cat.name}</option>
+                            <option key={cat._id} value={cat.catName}>{cat.catName}</option>
                         ))}
                     </select>
                     <select
@@ -316,7 +314,9 @@ const ProductsList = () => {
                                     <td className="px-6 py-5 font-mono text-[10px] text-slate-500 font-bold">{item.skuId}</td>
                                     <td className="px-6 py-5">
                                         <span className="text-[11px] font-bold text-slate-400 bg-slate-800/50 px-2 py-1 rounded-md border border-slate-700/50 leading-none">
-                                            {typeof item.category === 'string' ? item.category : 'General'}
+                                            {Array.isArray(item.category) && item.category.length > 0 
+                                                ? (typeof item.category[0] === 'object' ? item.category[0].catName : item.category[0])
+                                                : (typeof item.category === 'string' ? item.category : 'General')}
                                         </span>
                                     </td>
                                     <td className="px-6 py-5 text-sm text-white font-bold tabular-nums">{item.initialQty}</td>
@@ -324,29 +324,6 @@ const ProductsList = () => {
                                     <td className="px-6 py-5">{getStatusBadge(item.status)}</td>
                                     <td className="px-6 py-5 text-right">
                                         <div className="flex items-center justify-end gap-1.5">
-                                            <button
-                                                onClick={() => handleAddToCart(item)}
-                                                disabled={item.initialQty <= 0}
-                                                className={clsx(
-                                                    "p-2 rounded-lg transition-all",
-                                                    item.initialQty <= 0 
-                                                        ? "text-slate-700 cursor-not-allowed" 
-                                                        : "text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10"
-                                                )}
-                                                title={item.initialQty <= 0 ? "Out of Stock" : "Add to Checkout"}
-                                            >
-                                                <ShoppingCart className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setAdjustProduct(item);
-                                                    setShowAdjustModal(true);
-                                                }}
-                                                className="p-2 text-slate-400 hover:text-purple-400 hover:bg-purple-400/10 rounded-lg transition-all"
-                                                title="Adjust Stock"
-                                            >
-                                                <Settings className="w-4 h-4" />
-                                            </button>
                                             <button
                                                 onClick={() => handleEdit(item)}
                                                 className="p-2 text-slate-400 hover:text-cyan-400 hover:bg-cyan-400/10 rounded-lg transition-all"
@@ -412,20 +389,7 @@ const ProductsList = () => {
                 </div>
             </div>
 
-            <AnimatePresence>
-                {showAdjustModal && (
-                    <AdjustStockModal
-                        isOpen={showAdjustModal}
-                        onClose={() => setShowAdjustModal(false)}
-                        product={adjustProduct}
-                    />
-                )}
-            </AnimatePresence>
 
-            <BulkImportModal
-                isOpen={showBulkImport}
-                onClose={() => setShowBulkImport(false)}
-            />
         </motion.div>
     );
 };

@@ -33,9 +33,7 @@ const AddCategory = ({ isOpen = true }) => {
         catName: '',
         description: '',
         status: 'active',
-        parent: '',
-        thumbnail: '',
-        imageFile: null
+        parent: ''
     });
 
     useEffect(() => {
@@ -44,25 +42,12 @@ const AddCategory = ({ isOpen = true }) => {
                 catName: editCategory.catName || '',
                 description: editCategory.description || '',
                 status: editCategory.status || 'active',
-                parent: editCategory.parent?._id || editCategory.parent || '',
-                thumbnail: editCategory.thumbnail ? (editCategory.thumbnail.startsWith('http') ? editCategory.thumbnail : `${serverUrl}/${editCategory.thumbnail.replace('\\', '/')}`) : '',
-                imageFile: null
+                parent: editCategory.parent?._id || editCategory.parent || ''
             });
         }
     }, [editCategory]);
 
     if (!isOpen) return null;
-
-    const handleFileChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setFormData({
-                ...formData,
-                imageFile: file,
-                thumbnail: URL.createObjectURL(file)
-            });
-        }
-    };
 
     const handleSave = async () => {
         const categoryFormData = new FormData();
@@ -71,12 +56,6 @@ const AddCategory = ({ isOpen = true }) => {
         categoryFormData.append('status', formData.status);
         if (formData.parent) {
             categoryFormData.append('parent', formData.parent);
-        }
-
-        if (formData.imageFile) {
-            categoryFormData.append('thumbnail', formData.imageFile);
-        } else if (formData.thumbnail && !formData.thumbnail.startsWith('blob:')) {
-            categoryFormData.append('thumbnail', formData.thumbnail);
         }
 
         try {
@@ -157,22 +136,6 @@ const AddCategory = ({ isOpen = true }) => {
                                     </div>
 
                                     <div className="space-y-2 group">
-                                        <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Category Slug</label>
-                                        <div className="relative">
-                                            <input
-                                                type="text"
-                                                placeholder="e.g. electronics"
-                                                className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl px-5 py-4 text-slate-400 text-sm focus:outline-none"
-                                                disabled
-                                            />
-                                            <div className="mt-2 flex items-start gap-2">
-                                                <Info className="w-3.5 h-3.5 text-slate-600 shrink-0 mt-0.5" />
-                                                <p className="text-[10px] text-slate-600 font-medium italic">Slug is auto-generated from the name.</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2 group">
                                         <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Description</label>
                                         <textarea
                                             rows="6"
@@ -186,7 +149,7 @@ const AddCategory = ({ isOpen = true }) => {
                             </section>
                         </div>
 
-                        {/* Right Column - Status & Media */}
+                        {/* Right Column - Status */}
                         <div className="space-y-8">
                             <section className="bg-slate-900/40 border border-slate-800/60 rounded-4xl p-8 space-y-6">
                                 <div className="flex flex-col gap-1">
@@ -247,29 +210,6 @@ const AddCategory = ({ isOpen = true }) => {
                                         ))}
                                     </select>
                                 </div>
-                            </section>
-
-                            <section className="bg-slate-900/40 border border-slate-800/60 rounded-4xl p-8 space-y-6">
-                                <h3 className="text-lg font-bold text-white tracking-tight leading-none">Thumbnail</h3>
-                                <label className="group relative border-2 border-dashed border-slate-800 bg-slate-950/20 rounded-3xl p-10 flex flex-col items-center justify-center text-center cursor-pointer hover:border-purple-500/50 hover:bg-purple-500/5 transition-all overflow-hidden min-h-[160px]">
-                                    <input
-                                        type="file"
-                                        className="hidden"
-                                        accept="image/*"
-                                        onChange={handleFileChange}
-                                    />
-                                    {formData.thumbnail ? (
-                                        <img src={formData.thumbnail} alt="Thumbnail" className="w-full h-full object-contain max-h-[120px]" />
-                                    ) : (
-                                        <>
-                                            <div className="w-14 h-14 rounded-2xl bg-slate-800/50 group-hover:bg-purple-500/20 flex items-center justify-center mb-4 transition-all">
-                                                <Upload className="w-7 h-7 text-slate-500 group-hover:text-purple-400" />
-                                            </div>
-                                            <p className="text-white text-sm font-bold tracking-tight">Click to upload image</p>
-                                            <p className="text-slate-600 text-[10px] font-bold uppercase tracking-widest mt-2 leading-tight">SVG, PNG, JPG or GIF (max. 2MB)</p>
-                                        </>
-                                    )}
-                                </label>
                             </section>
                         </div>
                     </div>

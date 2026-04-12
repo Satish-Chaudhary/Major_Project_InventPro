@@ -183,25 +183,25 @@ const Customers = () => {
                                         </div>
                                     </td>
                                     <td className="px-8 py-6 text-right">
-                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="flex items-center justify-end gap-3 transition-all">
                                             <button 
                                                 onClick={() => navigate(`/customer/${customer._id}`)}
-                                                className="p-2 text-slate-400 hover:text-cyan-400 hover:bg-cyan-400/10 rounded-xl transition-all"
-                                                title="View History"
+                                                className="p-2.5 bg-slate-800/50 text-slate-400 hover:text-cyan-400 hover:bg-cyan-400/10 rounded-xl transition-all border border-slate-700 hover:border-cyan-500/50 shadow-lg"
+                                                title="View History & Performance"
                                             >
                                                 <ExternalLink className="w-4 h-4" />
                                             </button>
                                             <button 
                                                 onClick={() => navigate(`/edit-customer/${customer._id}`)}
-                                                className="p-2 text-slate-400 hover:text-purple-400 hover:bg-purple-400/10 rounded-xl transition-all"
-                                                title="Edit Profile"
+                                                className="p-2.5 bg-slate-800/50 text-slate-400 hover:text-purple-400 hover:bg-purple-400/10 rounded-xl transition-all border border-slate-700 hover:border-purple-500/50 shadow-lg"
+                                                title="Edit Client Profile"
                                             >
                                                 <Edit2 className="w-4 h-4" />
                                             </button>
                                             <button 
                                                 onClick={() => handleDelete(customer._id)}
-                                                className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all"
-                                                title="Delete"
+                                                className="p-2.5 bg-slate-800/50 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all border border-slate-700 hover:border-red-500/50 shadow-lg"
+                                                title="Purge Relationship"
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>

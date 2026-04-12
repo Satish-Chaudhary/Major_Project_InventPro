@@ -201,6 +201,44 @@ const Security = () => {
                             </button>
                         </div>
                     </section>
+                    
+                    <section className="bg-slate-900/40 border border-slate-800 rounded-3xl p-8 space-y-6 shadow-2xl">
+                        <div className="flex items-center gap-3">
+                            <Key className="w-5 h-5 text-amber-400" />
+                            <h3 className="text-lg font-black text-white tracking-tight">Security Config</h3>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between p-4 bg-slate-950/50 rounded-2xl border border-slate-800">
+                                <div>
+                                    <p className="text-[10px] font-black text-white uppercase tracking-widest">Backup Reminders</p>
+                                    <p className="text-[9px] font-bold text-slate-500 mt-1">Alert every 24 hours</p>
+                                </div>
+                                <button 
+                                    onClick={async () => {
+                                        const newVal = !securitySummary?.settings?.backupReminderEnabled;
+                                        await fetch('/api/settings/update', {
+                                            method: 'POST',
+                                            headers: { 
+                                                'Content-Type': 'application/json',
+                                                'Authorization': `Bearer ${localStorage.getItem('token')}` 
+                                            },
+                                            body: JSON.stringify({ backupReminderEnabled: newVal })
+                                        });
+                                        refetchSecuritySummary();
+                                    }}
+                                    className={clsx(
+                                        "w-10 h-5 rounded-full transition-all relative",
+                                        securitySummary?.settings?.backupReminderEnabled ? "bg-purple-600" : "bg-slate-800"
+                                    )}
+                                >
+                                    <div className={clsx(
+                                        "absolute top-1 w-3 h-3 bg-white rounded-full transition-all",
+                                        securitySummary?.settings?.backupReminderEnabled ? "right-1" : "left-1"
+                                    )} />
+                                </button>
+                            </div>
+                        </div>
+                    </section>
                 </div>
             </div>
         </motion.div>

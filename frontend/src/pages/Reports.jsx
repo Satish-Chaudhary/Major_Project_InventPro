@@ -13,6 +13,8 @@ import { useGetSalesOrdersQuery } from '../redux/slices/salesOrderSlice';
 import { useGetVendorsQuery } from '../redux/slices/vendorSlice';
 import { useGetOrdersQuery } from '../redux/slices/orderSlice';
 import { useLogDownloadMutation, useGetRecentExportsQuery } from '../redux/slices/reportSlice';
+import { useGetActivitiesQuery } from '../redux/slices/activitySlice';
+import { useGetPurchaseOrdersQuery } from '../redux/slices/purchaseOrderSlice';
 
 const Reports = () => {
     const [exportFormat, setExportFormat] = useState('csv');
@@ -24,20 +26,23 @@ const Reports = () => {
     const [isExporting, setIsExporting] = useState(false);
 
     const navigate = useNavigate();
-    
-    const { data: productsData } = useGetProductsQuery({ limit: 1000 });
-    const { data: salesOrdersData } = useGetSalesOrdersQuery({ limit: 1000 });
+
+    const { data: productsData } = useGetProductsQuery({ limit: 5000 });
+    const { data: salesOrdersData } = useGetSalesOrdersQuery({ limit: 5000 });
+    const { data: posData } = useGetPurchaseOrdersQuery({ limit: 5000 });
     const { data: vendorsData } = useGetVendorsQuery({});
-    const { data: ordersData } = useGetOrdersQuery({ limit: 1000 });
+    const { data: ordersData } = useGetOrdersQuery({ limit: 5000 });
+    const { data: activitiesData } = useGetActivitiesQuery({ limit: 5000 });
     const { data: recentExportsData, refetch: refetchExports } = useGetRecentExportsQuery();
-    
+
     const [logDownload] = useLogDownloadMutation();
 
     const dataSources = [
         { id: 'products', label: 'Product Inventory', icon: Database, desc: 'Export all product data' },
         { id: 'sales', label: 'Sales Transactions', icon: ShoppingCart, desc: 'Export sales order data' },
         { id: 'suppliers', label: 'Supplier Directives', icon: Users, desc: 'Export supplier/vendor data' },
-        { id: 'orders', label: 'User Activities', icon: ClipboardList, desc: 'Export order/inventory data' },
+        { id: 'orders', label: 'Internal Operations', icon: ClipboardList, desc: 'Export inventory move data' },
+        { id: 'activities', label: 'Full Audit Logs', icon: Clock, desc: 'Export system audit history' },
     ];
 
     const columnOptions = {
@@ -80,13 +85,21 @@ const Reports = () => {
             { id: 'paymentStatus', label: 'Payment Status' },
             { id: 'createdAt', label: 'Created At' },
         ],
+        activities: [
+            { id: 'action', label: 'Action' },
+            { id: 'module', label: 'Module' },
+            { id: 'user', label: 'User' },
+            { id: 'ipAddress', label: 'IP Address' },
+            { id: 'createdAt', label: 'Date' },
+        ],
     };
 
     const dataSourceLabels = {
         products: 'Product Inventory',
         sales: 'Sales Transactions',
         suppliers: 'Supplier Directives',
-        orders: 'User Activities',
+        orders: 'Internal Operations',
+        activities: 'Full Audit Logs',
     };
 
     const exportFormats = [
@@ -101,8 +114,8 @@ const Reports = () => {
     };
 
     const toggleColumn = (colId) => {
-        setSelectedColumns(prev => 
-            prev.includes(colId) 
+        setSelectedColumns(prev =>
+            prev.includes(colId)
                 ? prev.filter(c => c !== colId)
                 : [...prev, colId]
         );
@@ -141,11 +154,20 @@ const Reports = () => {
                     exportData = products.map(p => {
                         const row = {};
                         selectedColumns.forEach(col => {
-                            switch(col) {
+                            switch (col) {
                                 case 'productName': row['Product Name'] = p.productName || ''; break;
                                 case 'skuId': row['SKU / Barcode'] = p.skuId || p.barcodeEAN || ''; break;
                                 case 'initialQty': row['Stock Quantity'] = p.initialQty || 0; break;
-                                case 'category': row['Category'] = p.category?.catName || p.category || ''; break;
+                                case 'category': {
+                                    let catValue = '';
+                                    if (Array.isArray(p.category) && p.category.length > 0) {
+                                        catValue = p.category.map(c => (typeof c === 'object' ? c.catName : c)).filter(Boolean).join(', ');
+                                    } else if (typeof p.category === 'string') {
+                                        catValue = p.category;
+                                    }
+                                    row['Category'] = catValue || 'General';
+                                    break;
+                                }
                                 case 'costPrice': row['Cost Price'] = p.costPrice || 0; break;
                                 case 'basePrice': row['Selling Price'] = p.basePrice || 0; break;
                                 case 'supplier': row['Supplier'] = p.supplier?.company || ''; break;
@@ -158,12 +180,12 @@ const Reports = () => {
                     break;
 
                 case 'sales':
-                    const sales = (Array.isArray(salesOrdersData?.orders) ? salesOrdersData.orders : 
-                                 Array.isArray(salesOrdersData) ? salesOrdersData : []).filter(o => filterByDate(o));
+                    const sales = (Array.isArray(salesOrdersData?.orders) ? salesOrdersData.orders :
+                        Array.isArray(salesOrdersData) ? salesOrdersData : []).filter(o => filterByDate(o));
                     exportData = sales.map(o => {
                         const row = {};
                         selectedColumns.forEach(col => {
-                            switch(col) {
+                            switch (col) {
                                 case 'orderNumber': row['Order Number'] = o.orderNumber || ''; break;
                                 case 'customer': row['Customer'] = o.customer?.name || ''; break;
                                 case 'items': row['Items'] = o.items?.length || 0; break;
@@ -185,7 +207,7 @@ const Reports = () => {
                     exportData = suppliers.map(s => {
                         const row = {};
                         selectedColumns.forEach(col => {
-                            switch(col) {
+                            switch (col) {
                                 case 'company': row['Company'] = s.company || ''; break;
                                 case 'code': row['Code'] = s.code || ''; break;
                                 case 'email': row['Email'] = s.email || ''; break;
@@ -201,24 +223,42 @@ const Reports = () => {
                     break;
 
                 case 'orders':
-                    const orders = (Array.isArray(ordersData?.orders) ? ordersData.orders : 
-                                   Array.isArray(ordersData) ? ordersData : []).filter(o => filterByDate(o));
+                    const orders = (Array.isArray(ordersData?.orders) ? ordersData.orders :
+                        Array.isArray(ordersData) ? ordersData : []).filter(o => filterByDate(o));
                     exportData = orders.map(o => {
                         const row = {};
                         selectedColumns.forEach(col => {
-                            switch(col) {
-                                case 'orderNumber': row['Order Number'] = o.orderNumber || ''; break;
-                                case 'customer': row['Customer'] = o.customer?.name || ''; break;
+                            switch (col) {
+                                case 'orderNumber': row['Order Number'] = o.orderId || o.orderNumber || ''; break;
+                                case 'customer': row['Customer'] = o.entity || o.customer?.name || ''; break;
                                 case 'type': row['Type'] = o.type || ''; break;
                                 case 'status': row['Status'] = o.status || ''; break;
                                 case 'value': row['Value'] = o.value || 0; break;
-                                case 'paymentStatus': row['Payment Status'] = o.paymentStatus || ''; break;
+                                case 'paymentStatus': row['Payment Status'] = o.paymentStatus || 'N/A'; break;
                                 case 'createdAt': row['Created At'] = o.createdAt ? new Date(o.createdAt).toLocaleDateString() : ''; break;
                             }
                         });
                         return row;
                     });
-                    filename = `orders_export_${new Date().toISOString().split('T')[0]}`;
+                    filename = `operations_export_${new Date().toISOString().split('T')[0]}`;
+                    break;
+
+                case 'activities':
+                    const activities = (activitiesData?.activities || []).filter(a => filterByDate(a));
+                    exportData = activities.map(a => {
+                        const row = {};
+                        selectedColumns.forEach(col => {
+                            switch (col) {
+                                case 'action': row['Action'] = a.action || ''; break;
+                                case 'module': row['Module'] = a.module || ''; break;
+                                case 'user': row['User'] = a.userId?.fullName || 'System'; break;
+                                case 'ipAddress': row['IP Address'] = a.ipAddress || ''; break;
+                                case 'createdAt': row['Date'] = a.createdAt ? new Date(a.createdAt).toLocaleString() : ''; break;
+                            }
+                        });
+                        return row;
+                    });
+                    filename = `audit_logs_export_${new Date().toISOString().split('T')[0]}`;
                     break;
             }
 
@@ -256,10 +296,10 @@ const Reports = () => {
                 downloadFile(xlsContent, 'xls', 'application/vnd.ms-excel');
             } else if (exportFormat === 'pdf') {
                 const printWindow = window.open('', '_blank');
-                const tableRows = exportData.map(row => 
+                const tableRows = exportData.map(row =>
                     `<tr>${Object.values(row).map(v => `<td style="padding:8px;border:1px solid #ddd;">${v}</td>`).join('')}</tr>`
                 ).join('');
-                
+
                 printWindow.document.write(`
                     <!DOCTYPE html>
                     <html>
@@ -289,8 +329,8 @@ const Reports = () => {
             }
 
             try {
-                await logDownload({ 
-                    reportType: dataSourceLabels[dataSource], 
+                await logDownload({
+                    reportType: dataSourceLabels[dataSource],
                     format: exportFormat.toUpperCase(),
                     recordCount: exportData.length,
                     fileName: `${filename}.${exportFormat}`
@@ -299,7 +339,7 @@ const Reports = () => {
             } catch (logError) {
                 console.warn('Failed to log export:', logError);
             }
-            
+
             toast.success(`Export successful: ${exportData.length} records`);
         } catch (error) {
             console.error('Export error:', error);
@@ -316,27 +356,33 @@ const Reports = () => {
         size: exp.fileSize || `${Math.round((exp.recordCount || 0) * 0.5)} KB`,
         type: exp.format?.toLowerCase() || 'csv'
     })) || [
-        { id: 1, name: 'No exports yet', date: '', size: '', type: 'csv' }
-    ];
+            { id: 1, name: 'No exports yet', date: '', size: '', type: 'csv' }
+        ];
+
+    // Real-time Calculators for Quick Reports
+    const salesTotal = (salesOrdersData?.orders || []).reduce((s, o) => s + (o.total || 0), 0);
+    const purchaseTotal = (Array.isArray(posData?.orders) ? posData.orders : Array.isArray(posData) ? posData : []).reduce((s, o) => s + (o.total || 0), 0);
+    const lowStockCount = (productsData?.products || []).filter(p => p.status === 'low stock' || p.status === 'out of stock').length;
+    const inventoryValuation = (productsData?.products || []).reduce((s, p) => s + (p.initialQty * (p.basePrice || 0)), 0);
 
     const reportCategories = [
-        { 
-            name: 'Financial Reports', 
-            icon: BarChart, 
+        {
+            name: 'Financial Reports',
+            icon: BarChart,
             items: [
-                { label: 'Sales Performance', path: '/sales-performance', desc: 'Revenue analytics' },
-                { label: 'Profit & Loss', path: '/profit-loss', desc: 'Financial margins' },
-                { label: 'Vendor Performance', path: '/vendor-performance', desc: 'Supplier metrics' }
-            ] 
+                { label: 'Sales Performance', path: '/sales-performance', desc: 'Revenue analytics', value: `$${salesTotal.toLocaleString()}` },
+                { label: 'Profit & Loss', path: '/profit-loss', desc: 'Financial margins', value: `Live` },
+                { label: 'Vendor Performance', path: '/vendor-performance', desc: 'Supplier metrics', value: `$${purchaseTotal.toLocaleString()}` }
+            ]
         },
-        { 
-            name: 'Inventory Reports', 
-            icon: Layers, 
+        {
+            name: 'Inventory Insights',
+            icon: Layers,
             items: [
-                { label: 'Stock Movement', path: '/stock-movement', desc: 'Inventory changes' },
-                { label: 'Inventory Valuation', path: '/inventory-valuation', desc: 'Value breakdown' }
-            ] 
-        },
+                { label: 'Stock Movement', path: '/stock-movement', desc: 'Inventory changes', value: `${lowStockCount} Alerts` },
+                { label: 'Inventory Valuation', path: '/inventory-valuation', desc: 'Value breakdown', value: `$${(inventoryValuation / 1000).toFixed(1)}k` }
+            ]
+        }
     ];
 
     const getRecordCount = () => {
@@ -345,6 +391,7 @@ const Reports = () => {
             case 'sales': return Array.isArray(salesOrdersData?.orders) ? salesOrdersData.orders.length : 0;
             case 'suppliers': return vendorsData?.suppliers?.length || 0;
             case 'orders': return Array.isArray(ordersData?.orders) ? ordersData.orders.length : 0;
+            case 'activities': return activitiesData?.activities?.length || 0;
             default: return 0;
         }
     };
@@ -403,8 +450,8 @@ const Reports = () => {
                                 <div className="flex items-center gap-2 h-[94px]">
                                     <div className="relative flex-1 h-full">
                                         <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 z-10" />
-                                        <input 
-                                            type="date" 
+                                        <input
+                                            type="date"
                                             value={dateRange.start}
                                             onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
                                             className="w-full h-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3 py-3 text-white text-sm"
@@ -413,8 +460,8 @@ const Reports = () => {
                                     <span className="text-slate-600">-</span>
                                     <div className="relative flex-1 h-full">
                                         <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 z-10" />
-                                        <input 
-                                            type="date" 
+                                        <input
+                                            type="date"
                                             value={dateRange.end}
                                             onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
                                             className="w-full h-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3 py-3 text-white text-sm"
@@ -459,20 +506,20 @@ const Reports = () => {
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                                 {columnOptions[dataSource].map(col => (
-                                    <label 
-                                        key={col.id} 
+                                    <label
+                                        key={col.id}
                                         className={clsx(
                                             "flex items-center gap-2 bg-slate-950 border p-2.5 rounded-lg cursor-pointer hover:bg-slate-800/50 transition-colors",
-                                            selectedColumns.includes(col.id) 
-                                                ? "border-purple-500/50 bg-purple-500/5" 
+                                            selectedColumns.includes(col.id)
+                                                ? "border-purple-500/50 bg-purple-500/5"
                                                 : "border-slate-800"
                                         )}
                                     >
-                                        <div 
+                                        <div
                                             className={clsx(
                                                 "w-4 h-4 rounded flex items-center justify-center transition-all",
-                                                selectedColumns.includes(col.id) 
-                                                    ? "bg-purple-500" 
+                                                selectedColumns.includes(col.id)
+                                                    ? "bg-purple-500"
                                                     : "border border-slate-700"
                                             )}
                                         >
@@ -484,7 +531,7 @@ const Reports = () => {
                             </div>
                         </div>
 
-                        <button 
+                        <button
                             onClick={generateExport}
                             disabled={isExporting || selectedColumns.length === 0}
                             className="w-full bg-linear-to-r from-purple-600 to-cyan-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-purple-500/20 hover:brightness-110 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -516,12 +563,12 @@ const Reports = () => {
                                     <div className={clsx(
                                         "w-9 h-9 rounded-lg flex items-center justify-center",
                                         exp.type === 'pdf' ? "bg-rose-500/10 text-rose-400" :
-                                        exp.type === 'xlsx' ? "bg-cyan-500/10 text-cyan-400" :
-                                        "bg-emerald-500/10 text-emerald-400"
+                                            exp.type === 'xlsx' ? "bg-cyan-500/10 text-cyan-400" :
+                                                "bg-emerald-500/10 text-emerald-400"
                                     )}>
-                                        {exp.type === 'pdf' ? <File className="w-4 h-4" /> : 
-                                         exp.type === 'xlsx' ? <FileSpreadsheet className="w-4 h-4" /> :
-                                         <FileText className="w-4 h-4" />}
+                                        {exp.type === 'pdf' ? <File className="w-4 h-4" /> :
+                                            exp.type === 'xlsx' ? <FileSpreadsheet className="w-4 h-4" /> :
+                                                <FileText className="w-4 h-4" />}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium text-white truncate">{exp.name}</p>
@@ -553,10 +600,15 @@ const Reports = () => {
                                         <button
                                             key={itemIdx}
                                             onClick={() => navigate(item.path)}
-                                            className="w-full flex items-center justify-between p-2.5 bg-slate-950/50 border border-slate-800/50 rounded-lg hover:border-purple-500/30 hover:bg-purple-500/5 transition-all group"
+                                            className="w-full text-left p-3 rounded-xl border border-slate-800 hover:border-purple-500/30 hover:bg-purple-500/5 transition-all group relative overflow-hidden"
                                         >
-                                            <span className="text-sm text-slate-300 group-hover:text-purple-400">{item.label}</span>
-                                            <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-purple-400" />
+                                            <div className="flex justify-between items-start mb-1">
+                                                <span className="text-white text-xs font-bold group-hover:text-purple-400 transition-colors">{item.label}</span>
+                                                <span className="text-[10px] font-black px-2 py-0.5 rounded bg-slate-800 text-slate-400 group-hover:bg-purple-500 group-hover:text-white transition-all uppercase tracking-tighter">
+                                                    {item.value}
+                                                </span>
+                                            </div>
+                                            <p className="text-slate-500 text-[10px]">{item.desc}</p>
                                         </button>
                                     ))}
                                 </div>
@@ -564,10 +616,10 @@ const Reports = () => {
                         </div>
                     </section>
 
-                    <section className="bg-gradient-to-br from-purple-500/10 to-cyan-500/10 border border-purple-500/20 rounded-2xl p-5">
+                    <section className="bg-liner-to-br from-purple-500/10 to-cyan-500/10 border border-purple-500/20 rounded-2xl p-5">
                         <h3 className="text-sm font-bold text-white mb-2">Schedule Automated Reports</h3>
                         <p className="text-xs text-slate-400 mb-3">Get recurring exports delivered to your email</p>
-                        <button 
+                        <button
                             onClick={() => navigate('/settings')}
                             className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded-lg transition-colors"
                         >
