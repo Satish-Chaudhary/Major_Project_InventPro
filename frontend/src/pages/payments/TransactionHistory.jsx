@@ -11,7 +11,6 @@ const TransactionHistory = () => {
   const transactions = data?.data || [];
 
   return (
-  return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -19,7 +18,7 @@ const TransactionHistory = () => {
           <p className="text-slate-400 mt-1">Review your past payments and transaction details</p>
         </div>
       </div>
-      
+
       {transactions.length === 0 ? (
         <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-8 text-center text-slate-500 italic shadow-2xl">
           No transactions found.
@@ -57,10 +56,10 @@ const TransactionHistory = () => {
                     </td>
                     <td className="px-8 py-6">
                       <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest transition-all
-                        ${txn.status === 'captured' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 
-                          txn.status === 'failed' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 
-                          txn.status === 'refunded' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 
-                          'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+                        ${txn.status === 'captured' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
+                          txn.status === 'failed' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                            txn.status === 'refunded' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
+                              'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
                         {txn.status}
                       </span>
                     </td>
