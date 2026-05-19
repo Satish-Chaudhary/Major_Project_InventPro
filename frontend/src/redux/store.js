@@ -17,7 +17,7 @@ import { settingsApi } from './slices/settingsSlice'
 import { customerApi } from './slices/customerSlice'
 import { salesOrderApi } from './slices/salesOrderSlice'
 import { invoiceApi } from './slices/invoiceSlice'
-import { paymentApi } from './slices/paymentSlice'
+import paymentReducer, { paymentApi } from './slices/paymentSlice'
 import { purchaseOrderApi } from './slices/purchaseOrderSlice'
 
 const persistConfig = {
@@ -33,6 +33,7 @@ const rootReducer = combineReducers({
   orders: orderReducer,
   vendors: vendorReducer,
   categories: categoryReducer,
+  payment: paymentReducer,
   [productApi.reducerPath]: productApi.reducer,
   [orderApi.reducerPath]: orderApi.reducer,
   [vendorApi.reducerPath]: vendorApi.reducer,

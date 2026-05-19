@@ -59,6 +59,11 @@ const NotificationSettings = lazy(() => import('./pages/NotificationSettings'));
 const BackupExport = lazy(() => import('./pages/BackupExport'));
 const CustomerDetails = lazy(() => import('./pages/CustomerDetails'));
 
+// Payment Pages
+const PaymentPage = lazy(() => import('./pages/payments/PaymentPage'));
+const PaymentSuccess = lazy(() => import('./pages/payments/PaymentSuccess'));
+const PaymentFailed = lazy(() => import('./pages/payments/PaymentFailed'));
+const TransactionHistory = lazy(() => import('./pages/payments/TransactionHistory'));
 const LoadingFallback = () => (
   <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center">
     <ClipLoader color='#8b5cf6' size={60} />
@@ -323,6 +328,30 @@ const App = () => {
             <Route path='/customer/:id' element={
               <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.SALES_STAFF, ROLES.ACCOUNTANT]}>
                 <CustomerDetails />
+              </ProtectedRoute>
+            } />
+
+            <Route path='/payments/checkout/:invoiceId' element={
+              <ProtectedRoute isLoggedIn={isLoggedIn} user={user} allowedRoles={[ROLES.ADMIN, ROLES.ROOT, ROLES.MANAGER, ROLES.SALES_STAFF, ROLES.ACCOUNTANT]}>
+                <PaymentPage />
+              </ProtectedRoute>
+            } />
+            
+            <Route path='/payments/success' element={
+              <ProtectedRoute isLoggedIn={isLoggedIn} user={user}>
+                <PaymentSuccess />
+              </ProtectedRoute>
+            } />
+            
+            <Route path='/payments/failed' element={
+              <ProtectedRoute isLoggedIn={isLoggedIn} user={user}>
+                <PaymentFailed />
+              </ProtectedRoute>
+            } />
+            
+            <Route path='/payments/history' element={
+              <ProtectedRoute isLoggedIn={isLoggedIn} user={user}>
+                <TransactionHistory />
               </ProtectedRoute>
             } />
           </Route>

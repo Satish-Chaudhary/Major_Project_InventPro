@@ -1,4 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
+import { createSlice } from '@reduxjs/toolkit'
 import { serverUrl } from '../../config/api.js'
 
 export const paymentApi = createApi({
@@ -15,25 +16,81 @@ export const paymentApi = createApi({
   }),
   tagTypes: ['Payment'],
   endpoints: (builder) => ({
-    createPaymentIntent: builder.mutation({
+    createOrder: builder.mutation({
       query: (data) => ({
-        url: '/create-intent',
+        url: '/create-order',
         method: 'POST',
         body: data,
       }),
     }),
-    confirmPayment: builder.mutation({
+    verifyPayment: builder.mutation({
       query: (data) => ({
-        url: '/confirm',
+        url: '/verify',
         method: 'POST',
         body: data,
       }),
-      invalidatesTags: ['Payment', 'SalesOrder'],
+      invalidatesTags: ['Payment'],
+    }),
+    getPaymentHistory: builder.query({
+      query: () => '/history',
+      providesTags: ['Payment'],
+    }),
+    processRefund: builder.mutation({
+      query: (data) => ({
+        url: '/refund',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Payment'],
+    }),
+    getInvoice: builder.query({
+      query: (id) => `/invoice/${id}`,
     }),
   }),
 })
 
 export const {
-  useCreatePaymentIntentMutation,
-  useConfirmPaymentMutation,
+  useCreateOrderMutation,
+  useVerifyPaymentMutation,
+  useGetPaymentHistoryQuery,
+  useProcessRefundMutation,
+  useGetInvoiceQuery,
 } = paymentApi
+
+// Payment State Slice
+const initialState = {
+  loading: false,
+  paymentStatus: 'idle',
+  transaction: null,
+  error: null
+}
+
+const paymentSlice = createSlice({
+  name: 'payment',
+  initialState,
+  reducers: {
+    setPaymentLoading: (state, action) => {
+      state.loading = action.payload
+    },
+    setPaymentStatus: (state, action) => {
+      state.paymentStatus = action.payload
+    },
+    setTransaction: (state, action) => {
+      state.transaction = action.payload
+    },
+    setPaymentError: (state, action) => {
+      state.error = action.payload
+    },
+    resetPaymentState: () => initialState
+  }
+})
+
+export const { 
+  setPaymentLoading, 
+  setPaymentStatus, 
+  setTransaction, 
+  setPaymentError, 
+  resetPaymentState 
+} = paymentSlice.actions
+
+export default paymentSlice.reducer

@@ -1,47 +1,45 @@
 import mongoose from 'mongoose'
 
 const paymentSchema = new mongoose.Schema({
-  salesOrderId: {
+  userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'SalesOrder',
+    ref: 'User',
     required: true
   },
-  customerId: {
+  invoiceId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Customer',
+    ref: 'Invoice',
     required: true
+  },
+  razorpayOrderId: {
+    type: String,
+    sparse: true
+  },
+  razorpayPaymentId: {
+    type: String,
+    sparse: true
   },
   amount: {
     type: Number,
     required: true
   },
-  paymentMethod: {
+  currency: {
     type: String,
-    enum: ['cash', 'card', 'bank_transfer', 'credit', 'upi'],
-    required: true
+    default: 'INR'
   },
-  paymentGateway: {
+  method: {
     type: String,
-    enum: ['razorpay', 'stripe', 'paypal', 'none'],
-    default: 'none'
-  },
-  transactionId: {
-    type: String,
-    unique: true,
-    sparse: true
+    default: 'UPI'
   },
   status: {
     type: String,
-    enum: ['pending', 'completed', 'failed', 'refunded'],
-    default: 'pending'
+    enum: ['created', 'pending', 'processing', 'captured', 'failed', 'cancelled', 'refunded', 'reconciliation_pending'],
+    default: 'created'
   },
-  paymentDate: {
-    type: Date,
-    default: Date.now
-  },
-  receiptUrl: String,
-  notes: String,
-  metadata: mongoose.Schema.Types.Mixed
+  verified: {
+    type: Boolean,
+    default: false
+  }
 }, {
   timestamps: true
 })

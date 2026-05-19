@@ -1,23 +1,33 @@
 import express from 'express';
 import { 
-    createPaymentIntent, 
-    confirmPayment, 
-    stripeWebhook, 
-    razorpayWebhook 
+    createOrder,
+    verifyPayment,
+    razorpayWebhookHandler,
+    getPaymentHistory,
+    processRefund,
+    getInvoice
 } from '../controllers/payment.controllers.js';
 import { authMiddleware } from '../middleware/isAuth.middleware.js';
 import { authorize } from '../middleware/role.middleware.js';
 
 const paymentRouter = express.Router();
 
-// Intent creation (Protected)
-paymentRouter.post('/create-intent', authMiddleware, authorize(['admin', 'root', 'staff', 'customer']), createPaymentIntent);
+// Create Razorpay order
+paymentRouter.post('/create-order', authMiddleware, createOrder);
 
-// Direct Confirmation (Protected)
-paymentRouter.post('/confirm', authMiddleware, authorize(['admin', 'root', 'staff', 'customer']), confirmPayment);
+// Verify payment signature
+paymentRouter.post('/verify', authMiddleware, verifyPayment);
 
-// Webhooks (Public)
-paymentRouter.post('/webhook/stripe', express.raw({ type: 'application/json' }), stripeWebhook);
-paymentRouter.post('/webhook/razorpay', razorpayWebhook);
+// Razorpay webhook handler
+paymentRouter.post('/webhook', razorpayWebhookHandler);
+
+// Retrieve payment history
+paymentRouter.get('/history', authMiddleware, getPaymentHistory);
+
+// Process refunds
+paymentRouter.post('/refund', authMiddleware, authorize(['admin', 'root', 'staff']), processRefund);
+
+// Download invoice
+paymentRouter.get('/invoice/:id', authMiddleware, getInvoice);
 
 export default paymentRouter;

@@ -87,7 +87,7 @@ const Invoices = () => {
                                         {new Date(inv.createdAt).toLocaleDateString()}
                                     </td>
                                     <td className="px-8 py-6">
-                                        <span className="text-white font-black">${inv.total.toFixed(2)}</span>
+                                        <span className="text-white font-black">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(inv.total || 0)}</span>
                                     </td>
                                     <td className="px-8 py-6">
                                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
@@ -107,6 +107,15 @@ const Invoices = () => {
                                             >
                                                 <FiEye size={18} />
                                             </button>
+                                            {inv.status !== 'paid' && (
+                                                <button 
+                                                    onClick={() => navigate(`/payments/checkout/${inv._id}`, { state: { amount: inv.total } })}
+                                                    className="p-2 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition-all"
+                                                    title="Pay Invoice"
+                                                >
+                                                    <span className="text-xs font-bold px-1">PAY</span>
+                                                </button>
+                                            )}
                                             <button 
                                                 onClick={() => handleDownload(inv._id, inv.invoiceNumber)}
                                                 className="p-2 bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-all"
