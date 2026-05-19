@@ -29,7 +29,7 @@ const CheckoutButton = ({ invoiceId, amount, currency = "INR", label = "Pay Now"
       const orderResponse = await createOrder({ invoiceId, amount, currency }).unwrap();
 
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY || "rzp_test_RUCaCIZvYgZr6O", // Fallback to test key for safety
+        key: import.meta.env.VITE_RAZORPAY_KEY,
         amount: orderResponse.order.amount,
         currency: orderResponse.order.currency,
         name: "InventPro",
@@ -65,11 +65,11 @@ const CheckoutButton = ({ invoiceId, amount, currency = "INR", label = "Pay Now"
           color: "#3B82F6"
         },
         modal: {
-            ondismiss: function() {
-                setIsProcessing(false);
-                dispatch(setPaymentLoading(false));
-                dispatch(setPaymentStatus('cancelled'));
-            }
+          ondismiss: function () {
+            setIsProcessing(false);
+            dispatch(setPaymentLoading(false));
+            dispatch(setPaymentStatus('cancelled'));
+          }
         }
       };
 
@@ -87,12 +87,11 @@ const CheckoutButton = ({ invoiceId, amount, currency = "INR", label = "Pay Now"
   };
 
   return (
-    <button 
-      onClick={handlePayment} 
+    <button
+      onClick={handlePayment}
       disabled={isProcessing}
-      className={`w-full py-3 rounded-xl font-bold uppercase tracking-widest text-[11px] transition-all duration-300 ${
-        isProcessing ? 'bg-blue-600/50 text-white/50 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-500 shadow-[0_0_20px_rgba(37,99,235,0.3)]'
-      }`}
+      className={`w-full py-3 rounded-xl font-bold uppercase tracking-widest text-[11px] transition-all duration-300 ${isProcessing ? 'bg-blue-600/50 text-white/50 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-500 shadow-[0_0_20px_rgba(37,99,235,0.3)]'
+        }`}
     >
       {isProcessing ? 'Processing...' : label}
     </button>

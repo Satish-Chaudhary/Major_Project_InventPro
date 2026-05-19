@@ -4,6 +4,9 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import helmet from 'helmet';
+import mongoSanitize from 'express-mongo-sanitize';
+import rateLimit from 'express-rate-limit';
 
 import authRoutes from './routes/auth.routes.js';
 import adminRoutes from './routes/admin.routes.js';
@@ -32,16 +35,34 @@ dotenv.config()
 
 const port = process.env.PORT || 5000;
 
+// Security Middleware: Set HTTP headers
+app.use(helmet({
+    crossOriginResourcePolicy: false // Allow loading images/uploads locally
+}));
+
 app.use(cors({
     origin: "http://localhost:5173",
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
 }))
 
-app.use(express.json());
+// Rate Limiting
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
+    message: 'Too many requests from this IP, please try again after 15 minutes',
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+app.use('/api', limiter);
+
+app.use(express.json({ limit: '10kb' })); // Limit body size to prevent payload DOS
 app.use(cookieParser());
 
-// Serve static files from uploads directory
+// Data Sanitization against NoSQL query injection
+app.use(mongoSanitize());
+
+// Serve static files from uploads directory securely
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use("/api/auth", authRoutes);
