@@ -60,7 +60,14 @@ app.use(express.json({ limit: '10kb' })); // Limit body size to prevent payload 
 app.use(cookieParser());
 
 // Data Sanitization against NoSQL query injection
-app.use(mongoSanitize());
+app.use((req, res, next) => {
+    ['body', 'params', 'headers', 'query'].forEach((k) => {
+        if (req[k]) {
+            mongoSanitize.sanitize(req[k]);
+        }
+    });
+    next();
+});
 
 // Serve static files from uploads directory securely
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
