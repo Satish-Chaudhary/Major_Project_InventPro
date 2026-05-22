@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "server": "nodemon server.js",
-    "seed": "node scripts/seedDatabase.js"
+    "seed": "node scripts/seedDatabase.js",
+    "vercel-start": "node server.js"
   },
   "author": "",
   "license": "ISC",
