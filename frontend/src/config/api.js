@@ -1,1 +1,1 @@
-export const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+export const serverUrl = import.meta.env.SERVER_URL || 'https://inventpro-xi.vercel.app/';

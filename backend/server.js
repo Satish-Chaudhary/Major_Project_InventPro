@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import helmet from 'helmet';
 import mongoSanitize from 'express-mongo-sanitize';
 import rateLimit from 'express-rate-limit';
+import mongoose from 'mongoose';
 
 import authRoutes from './routes/auth.routes.js';
 import adminRoutes from './routes/admin.routes.js';
@@ -116,4 +117,4 @@ app.use((req, res, next) => {
 
 
 
-module.exports = app;
+export default app;
