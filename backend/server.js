@@ -24,7 +24,6 @@ import invoiceRoutes from './routes/invoice.routes.js'
 import paymentRoutes from './routes/payment.routes.js'
 import backupRoutes from './routes/backup.routes.js'
 import systemRoutes from './routes/system.routes.js'
-import connectDB from './config/db.js';
 
 import { app, server } from './socket/socket.js';
 
@@ -89,9 +88,32 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/backup", backupRoutes);
 app.use("/api/system", systemRoutes);
 
-server.listen(port, () => {
-    connectDB();
-    console.log(`Server is Listening on port ${port}`);
+
+// serverless function for mongodb connection
+
+let isConnection = false;
+async function connectToMongoDB(params) {
+    try {
+        await mongoose.connect(process.env.MONGODB_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true
+        });
+        isConnection = true;
+        console.log("Connected to mongoDB");
+    } catch (error) {
+        console.error("Error connection to mongoDB:", error);
+    }
+}
+
+// add middleware
+
+app.use((req, res, next) => {
+    if (!isConnection) {
+        connectToMongoDB();
+    }
+    next()
 })
 
-export default app;
+
+
+module.exports = app;
