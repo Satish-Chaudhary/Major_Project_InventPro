@@ -33,7 +33,7 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config()
 
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 4000;
 
 // Security Middleware: Set HTTP headers
 app.use(helmet({
